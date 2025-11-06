@@ -1,0 +1,861 @@
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
+--
+-- Host: localhost    Database: bookingcinema
+-- ------------------------------------------------------
+-- Server version	8.0.41
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `bookings`
+--
+
+DROP TABLE IF EXISTS `bookings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `bookings` (
+  `id_booking` int NOT NULL AUTO_INCREMENT,
+  `id_users` int DEFAULT NULL,
+  `id_member` int DEFAULT NULL,
+  `id_showtime` int DEFAULT NULL,
+  `id_staff` int DEFAULT NULL,
+  `id_promotions` int DEFAULT NULL,
+  `booking_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `total_amount` decimal(10,2) NOT NULL,
+  `payment_status` varchar(20) DEFAULT 'unpaid',
+  `booking_status` varchar(20) DEFAULT 'pending',
+  `booking_code` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id_booking`),
+  UNIQUE KEY `UQ_BookingCode` (`booking_code`),
+  KEY `fk_bookings_user` (`id_users`),
+  KEY `fk_bookings_showtime` (`id_showtime`),
+  KEY `fk_bookings_staff` (`id_staff`),
+  KEY `fk_bookings_promotion` (`id_promotions`),
+  KEY `fk_booking_member` (`id_member`),
+  CONSTRAINT `fk_booking_member` FOREIGN KEY (`id_member`) REFERENCES `member` (`id_member`),
+  CONSTRAINT `fk_bookings_promotion` FOREIGN KEY (`id_promotions`) REFERENCES `promotions` (`id_promotions`),
+  CONSTRAINT `fk_bookings_showtime` FOREIGN KEY (`id_showtime`) REFERENCES `showtimes` (`id_showtime`),
+  CONSTRAINT `fk_bookings_staff` FOREIGN KEY (`id_staff`) REFERENCES `staff` (`id_staff`),
+  CONSTRAINT `fk_bookings_user` FOREIGN KEY (`id_users`) REFERENCES `users` (`id_users`),
+  CONSTRAINT `chk_booking_status` CHECK ((`booking_status` in (_utf8mb4'pending',_utf8mb4'confirmed',_utf8mb4'cancelled'))),
+  CONSTRAINT `chk_booking_total` CHECK ((`total_amount` >= 0)),
+  CONSTRAINT `chk_payment_status` CHECK ((`payment_status` in (_utf8mb4'unpaid',_utf8mb4'paid',_utf8mb4'refunded')))
+) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `cinemas`
+--
+
+DROP TABLE IF EXISTS `cinemas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cinemas` (
+  `id_cinema` int NOT NULL AUTO_INCREMENT,
+  `cinema_name` varchar(100) NOT NULL,
+  `address` varchar(255) NOT NULL,
+  `city` varchar(50) NOT NULL,
+  `description` text,
+  `image` varchar(255) DEFAULT NULL,
+  `contact_number` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  PRIMARY KEY (`id_cinema`),
+  CONSTRAINT `chk_cinema_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `contact`
+--
+
+DROP TABLE IF EXISTS `contact`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contact` (
+  `id_contact` int NOT NULL AUTO_INCREMENT,
+  `id_staff` int DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `contact_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `status` varchar(20) DEFAULT 'unread',
+  `reply` text,
+  `reply_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_contact`),
+  KEY `fk_contact_staff` (`id_staff`),
+  CONSTRAINT `fk_contact_staff` FOREIGN KEY (`id_staff`) REFERENCES `staff` (`id_staff`),
+  CONSTRAINT `chk_contact_status` CHECK ((`status` in (_utf8mb4'unread',_utf8mb4'read',_utf8mb4'replied')))
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `detail_booking`
+--
+
+DROP TABLE IF EXISTS `detail_booking`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `detail_booking` (
+  `id_booking` int NOT NULL,
+  `id_seats` int NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `id_tickettype` int DEFAULT NULL,
+  PRIMARY KEY (`id_booking`,`id_seats`),
+  KEY `fk_detailbooking_seat` (`id_seats`),
+  KEY `fk_detailbooking_tickettype` (`id_tickettype`),
+  CONSTRAINT `fk_detailbooking_booking` FOREIGN KEY (`id_booking`) REFERENCES `bookings` (`id_booking`) ON DELETE CASCADE,
+  CONSTRAINT `fk_detailbooking_seat` FOREIGN KEY (`id_seats`) REFERENCES `seat` (`id_seats`),
+  CONSTRAINT `fk_detailbooking_tickettype` FOREIGN KEY (`id_tickettype`) REFERENCES `ticket_type` (`id_tickettype`),
+  CONSTRAINT `chk_detail_price` CHECK ((`price` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `entertainment`
+--
+
+DROP TABLE IF EXISTS `entertainment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `entertainment` (
+  `id_entertainment` int NOT NULL AUTO_INCREMENT,
+  `id_cinema` int DEFAULT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `image_url` varchar(255) DEFAULT NULL,
+  `start_date` datetime NOT NULL,
+  `end_date` datetime DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `views_count` int DEFAULT '0',
+  `featured` tinyint(1) DEFAULT '0',
+  `id_staff` int DEFAULT NULL,
+  PRIMARY KEY (`id_entertainment`),
+  KEY `fk_entertainment_cinema` (`id_cinema`),
+  KEY `fk_entertainment_staff` (`id_staff`),
+  CONSTRAINT `fk_entertainment_cinema` FOREIGN KEY (`id_cinema`) REFERENCES `cinemas` (`id_cinema`) ON DELETE CASCADE,
+  CONSTRAINT `fk_entertainment_staff` FOREIGN KEY (`id_staff`) REFERENCES `staff` (`id_staff`) ON DELETE SET NULL,
+  CONSTRAINT `chk_entertainment_dates` CHECK (((`end_date` is null) or (`end_date` >= `start_date`))),
+  CONSTRAINT `chk_entertainment_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `genre`
+--
+
+DROP TABLE IF EXISTS `genre`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `genre` (
+  `id_genre` int NOT NULL AUTO_INCREMENT,
+  `genre_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_genre`),
+  UNIQUE KEY `UQ_GenreName` (`genre_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `genre_movies`
+--
+
+DROP TABLE IF EXISTS `genre_movies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `genre_movies` (
+  `id_genre` int NOT NULL,
+  `id_movie` int NOT NULL,
+  PRIMARY KEY (`id_genre`,`id_movie`),
+  KEY `fk_genremovies_movie` (`id_movie`),
+  CONSTRAINT `fk_genremovies_genre` FOREIGN KEY (`id_genre`) REFERENCES `genre` (`id_genre`) ON DELETE CASCADE,
+  CONSTRAINT `fk_genremovies_movie` FOREIGN KEY (`id_movie`) REFERENCES `movies` (`id_movie`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `homepage_banners`
+--
+
+DROP TABLE IF EXISTS `homepage_banners`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `homepage_banners` (
+  `id_banner` int NOT NULL AUTO_INCREMENT,
+  `id_movie` int NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `display_order` int NOT NULL DEFAULT '1',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_banner`),
+  UNIQUE KEY `unique_active_movie` (`id_movie`,`is_active`),
+  KEY `idx_display_order` (`display_order`),
+  KEY `idx_is_active` (`is_active`),
+  KEY `idx_movie_id` (`id_movie`),
+  CONSTRAINT `homepage_banners_ibfk_1` FOREIGN KEY (`id_movie`) REFERENCES `movies` (`id_movie`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `member`
+--
+
+DROP TABLE IF EXISTS `member`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `member` (
+  `id_member` int NOT NULL AUTO_INCREMENT,
+  `id_user` int NOT NULL,
+  `id_typemember` int NOT NULL,
+  `id_membership` int DEFAULT NULL,
+  `points` int DEFAULT '0',
+  `join_date` date DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_member`),
+  UNIQUE KEY `UQ_MemberUser` (`id_user`),
+  KEY `fk_member_typemember` (`id_typemember`),
+  KEY `fk_member_membership` (`id_membership`),
+  CONSTRAINT `fk_member_membership` FOREIGN KEY (`id_membership`) REFERENCES `membership` (`id_membership`),
+  CONSTRAINT `fk_member_typemember` FOREIGN KEY (`id_typemember`) REFERENCES `type_member` (`id_typemember`),
+  CONSTRAINT `fk_member_user` FOREIGN KEY (`id_user`) REFERENCES `users` (`id_users`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `membership`
+--
+
+DROP TABLE IF EXISTS `membership`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `membership` (
+  `id_membership` int NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL,
+  `title` varchar(100) NOT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `description` text,
+  `benefits` text,
+  `criteria` text,
+  `status` enum('active','inactive') DEFAULT 'active',
+  PRIMARY KEY (`id_membership`),
+  UNIQUE KEY `UQ_MembershipCode` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `movies`
+--
+
+DROP TABLE IF EXISTS `movies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `movies` (
+  `id_movie` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `original_title` varchar(255) DEFAULT NULL,
+  `director` varchar(100) DEFAULT NULL,
+  `actors` text,
+  `duration` int NOT NULL,
+  `release_date` date NOT NULL,
+  `end_date` date DEFAULT NULL,
+  `language` varchar(50) DEFAULT NULL,
+  `subtitle` varchar(50) DEFAULT NULL,
+  `country` varchar(50) DEFAULT NULL,
+  `description` text,
+  `poster_image` varchar(255) DEFAULT NULL,
+  `banner_image` varchar(255) DEFAULT NULL,
+  `trailer_url` varchar(255) DEFAULT NULL,
+  `age_restriction` varchar(10) DEFAULT NULL,
+  `status` enum('coming soon','now showing','expired') DEFAULT 'coming soon',
+  PRIMARY KEY (`id_movie`),
+  CONSTRAINT `chk_enddate` CHECK (((`end_date` is null) or (`end_date` >= `release_date`))),
+  CONSTRAINT `chk_movie_duration` CHECK ((`duration` > 0)),
+  CONSTRAINT `chk_movie_status` CHECK ((`status` in (_utf8mb4'coming soon',_utf8mb4'now showing',_utf8mb4'expired')))
+) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `news`
+--
+
+DROP TABLE IF EXISTS `news`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `news` (
+  `id_new` int NOT NULL AUTO_INCREMENT,
+  `id_staff` int DEFAULT NULL,
+  `id_movie` int DEFAULT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  `published_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `status` varchar(20) DEFAULT 'active',
+  `views_count` int DEFAULT '0',
+  `featured` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id_new`),
+  KEY `fk_news_staff` (`id_staff`),
+  KEY `fk_news_movie` (`id_movie`),
+  CONSTRAINT `fk_news_movie` FOREIGN KEY (`id_movie`) REFERENCES `movies` (`id_movie`),
+  CONSTRAINT `fk_news_staff` FOREIGN KEY (`id_staff`) REFERENCES `staff` (`id_staff`),
+  CONSTRAINT `chk_news_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive'))),
+  CONSTRAINT `chk_views_count` CHECK ((`views_count` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `operation_hours`
+--
+
+DROP TABLE IF EXISTS `operation_hours`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `operation_hours` (
+  `id_operation` int NOT NULL AUTO_INCREMENT,
+  `id_cinema` int DEFAULT NULL,
+  `day_of_week` tinyint NOT NULL,
+  `opening_time` time NOT NULL,
+  `closing_time` time NOT NULL,
+  `is_holiday` tinyint(1) DEFAULT '0',
+  `special_note` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_operation`),
+  UNIQUE KEY `UQ_CinemaDay` (`id_cinema`,`day_of_week`),
+  CONSTRAINT `fk_operation_cinema` FOREIGN KEY (`id_cinema`) REFERENCES `cinemas` (`id_cinema`) ON DELETE CASCADE,
+  CONSTRAINT `chk_day_of_week` CHECK ((`day_of_week` between 1 and 7))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `order_product`
+--
+
+DROP TABLE IF EXISTS `order_product`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `order_product` (
+  `id_orderproduct` int NOT NULL AUTO_INCREMENT,
+  `id_booking` int DEFAULT NULL,
+  `id_product` int DEFAULT NULL,
+  `id_staff` int DEFAULT NULL,
+  `quantity` int NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `order_status` varchar(20) DEFAULT 'pending',
+  PRIMARY KEY (`id_orderproduct`),
+  KEY `fk_orderproduct_booking` (`id_booking`),
+  KEY `fk_orderproduct_product` (`id_product`),
+  KEY `fk_orderproduct_staff` (`id_staff`),
+  CONSTRAINT `fk_orderproduct_booking` FOREIGN KEY (`id_booking`) REFERENCES `bookings` (`id_booking`) ON DELETE CASCADE,
+  CONSTRAINT `fk_orderproduct_product` FOREIGN KEY (`id_product`) REFERENCES `product` (`id_product`),
+  CONSTRAINT `fk_orderproduct_staff` FOREIGN KEY (`id_staff`) REFERENCES `staff` (`id_staff`),
+  CONSTRAINT `chk_order_price` CHECK ((`price` >= 0)),
+  CONSTRAINT `chk_order_quantity` CHECK ((`quantity` > 0)),
+  CONSTRAINT `chk_order_status` CHECK ((`order_status` in (_utf8mb4'pending',_utf8mb4'completed',_utf8mb4'cancelled')))
+) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `payment_methods`
+--
+
+DROP TABLE IF EXISTS `payment_methods`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payment_methods` (
+  `id_payment_method` int NOT NULL AUTO_INCREMENT,
+  `method_code` varchar(20) NOT NULL,
+  `method_name` varchar(100) NOT NULL,
+  `description` text,
+  `icon_url` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  `processing_fee` decimal(10,2) DEFAULT '0.00',
+  `min_amount` decimal(10,2) DEFAULT '0.00',
+  `max_amount` decimal(10,2) DEFAULT NULL,
+  `display_order` int DEFAULT '0',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_payment_method`),
+  UNIQUE KEY `UQ_MethodCode` (`method_code`),
+  CONSTRAINT `chk_max_amount` CHECK (((`max_amount` is null) or (`max_amount` >= `min_amount`))),
+  CONSTRAINT `chk_min_amount` CHECK ((`min_amount` >= 0)),
+  CONSTRAINT `chk_processing_fee` CHECK ((`processing_fee` >= 0))
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `payments`
+--
+
+DROP TABLE IF EXISTS `payments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payments` (
+  `id_payment` int NOT NULL AUTO_INCREMENT,
+  `id_booking` int DEFAULT NULL,
+  `id_payment_method` int DEFAULT NULL,
+  `payment_method` varchar(50) NOT NULL,
+  `payment_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `amount` decimal(10,2) NOT NULL,
+  `transaction_id` varchar(100) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `payment_details` text,
+  PRIMARY KEY (`id_payment`),
+  UNIQUE KEY `UQ_TransactionID` (`transaction_id`),
+  KEY `fk_payment_booking` (`id_booking`),
+  KEY `fk_payment_method` (`id_payment_method`),
+  CONSTRAINT `fk_payment_booking` FOREIGN KEY (`id_booking`) REFERENCES `bookings` (`id_booking`) ON DELETE CASCADE,
+  CONSTRAINT `fk_payment_method` FOREIGN KEY (`id_payment_method`) REFERENCES `payment_methods` (`id_payment_method`),
+  CONSTRAINT `chk_payment_amount` CHECK ((`amount` > 0)),
+  CONSTRAINT `chk_payment_status_payment` CHECK ((`status` in (_utf8mb4'pending',_utf8mb4'completed',_utf8mb4'failed')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `product`
+--
+
+DROP TABLE IF EXISTS `product`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product` (
+  `id_product` int NOT NULL AUTO_INCREMENT,
+  `id_typeproduct` int DEFAULT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'available',
+  `quantity` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id_product`),
+  KEY `fk_product_type` (`id_typeproduct`),
+  CONSTRAINT `fk_product_type` FOREIGN KEY (`id_typeproduct`) REFERENCES `type_product` (`id_typeproduct`),
+  CONSTRAINT `chk_product_price` CHECK ((`price` >= 0)),
+  CONSTRAINT `chk_product_status` CHECK ((`status` in (_utf8mb4'available',_utf8mb4'unavailable')))
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `promotions`
+--
+
+DROP TABLE IF EXISTS `promotions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `promotions` (
+  `id_promotions` int NOT NULL AUTO_INCREMENT,
+  `promotion_code` varchar(20) NOT NULL,
+  `title` varchar(100) NOT NULL,
+  `description` text,
+  `discount_percent` decimal(5,2) DEFAULT '0.00',
+  `discount_amount` decimal(10,2) DEFAULT '0.00',
+  `start_date` datetime NOT NULL,
+  `end_date` datetime DEFAULT NULL,
+  `min_purchase` decimal(10,2) DEFAULT '0.00',
+  `max_discount` decimal(10,2) DEFAULT NULL,
+  `usage_limit` int DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  PRIMARY KEY (`id_promotions`),
+  UNIQUE KEY `UQ_PromotionCode` (`promotion_code`),
+  CONSTRAINT `chk_discount_amount` CHECK ((`discount_amount` >= 0)),
+  CONSTRAINT `chk_discount_percent` CHECK ((`discount_percent` between 0 and 100)),
+  CONSTRAINT `chk_discount_type` CHECK ((((`discount_percent` > 0) and (`discount_amount` = 0)) or ((`discount_percent` = 0) and (`discount_amount` > 0)))),
+  CONSTRAINT `chk_max_discount` CHECK (((`max_discount` is null) or (`max_discount` >= 0))),
+  CONSTRAINT `chk_min_purchase` CHECK ((`min_purchase` >= 0)),
+  CONSTRAINT `chk_promo_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive'))),
+  CONSTRAINT `chk_promotion_dates` CHECK (((`end_date` is null) or (`end_date` >= `start_date`))),
+  CONSTRAINT `chk_usage_limit` CHECK (((`usage_limit` is null) or (`usage_limit` > 0)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `review`
+--
+
+DROP TABLE IF EXISTS `review`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `review` (
+  `id_users` int NOT NULL,
+  `id_movie` int NOT NULL,
+  `rating` tinyint NOT NULL,
+  `comment` text,
+  `review_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `is_approved` tinyint(1) DEFAULT '0',
+  `likes_count` int DEFAULT '0',
+  PRIMARY KEY (`id_users`,`id_movie`),
+  KEY `fk_review_movie` (`id_movie`),
+  CONSTRAINT `fk_review_movie` FOREIGN KEY (`id_movie`) REFERENCES `movies` (`id_movie`) ON DELETE CASCADE,
+  CONSTRAINT `fk_review_user` FOREIGN KEY (`id_users`) REFERENCES `users` (`id_users`) ON DELETE CASCADE,
+  CONSTRAINT `chk_likes_count` CHECK ((`likes_count` >= 0)),
+  CONSTRAINT `chk_rating` CHECK ((`rating` between 1 and 5))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `screen`
+--
+
+DROP TABLE IF EXISTS `screen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `screen` (
+  `id_screen` int NOT NULL AUTO_INCREMENT,
+  `id_cinema` int DEFAULT NULL,
+  `screen_name` varchar(50) NOT NULL,
+  `capacity` int NOT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `id_screentype` int DEFAULT NULL,
+  PRIMARY KEY (`id_screen`),
+  UNIQUE KEY `UQ_CinemaScreen` (`id_cinema`,`screen_name`),
+  KEY `fk_screen_type` (`id_screentype`),
+  CONSTRAINT `fk_screen_cinema` FOREIGN KEY (`id_cinema`) REFERENCES `cinemas` (`id_cinema`) ON DELETE CASCADE,
+  CONSTRAINT `fk_screen_type` FOREIGN KEY (`id_screentype`) REFERENCES `screen_type` (`id_screentype`),
+  CONSTRAINT `chk_screen_capacity` CHECK ((`capacity` > 0)),
+  CONSTRAINT `chk_screen_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `screen_type`
+--
+
+DROP TABLE IF EXISTS `screen_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `screen_type` (
+  `id_screentype` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `description` text,
+  `base_price_multiplier` decimal(3,2) NOT NULL DEFAULT '1.00',
+  `technology_description` varchar(255) DEFAULT NULL,
+  `icon_url` varchar(255) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  PRIMARY KEY (`id_screentype`),
+  UNIQUE KEY `UQ_ScreenTypeName` (`type_name`),
+  CONSTRAINT `chk_screen_type_multiplier` CHECK ((`base_price_multiplier` > 0)),
+  CONSTRAINT `chk_screen_type_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `seat`
+--
+
+DROP TABLE IF EXISTS `seat`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `seat` (
+  `id_seats` int NOT NULL AUTO_INCREMENT,
+  `id_screen` int DEFAULT NULL,
+  `id_seattype` int DEFAULT NULL,
+  `seat_row` char(2) NOT NULL,
+  `seat_number` int NOT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  PRIMARY KEY (`id_seats`),
+  UNIQUE KEY `UQ_ScreenSeat` (`id_screen`,`seat_row`,`seat_number`),
+  KEY `fk_seat_type` (`id_seattype`),
+  CONSTRAINT `fk_seat_screen` FOREIGN KEY (`id_screen`) REFERENCES `screen` (`id_screen`) ON DELETE CASCADE,
+  CONSTRAINT `fk_seat_type` FOREIGN KEY (`id_seattype`) REFERENCES `seat_type` (`id_seattype`),
+  CONSTRAINT `chk_seat_number` CHECK ((`seat_number` > 0)),
+  CONSTRAINT `chk_seat_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive',_utf8mb4'maintenance')))
+) ENGINE=InnoDB AUTO_INCREMENT=324 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `seat_locks`
+--
+
+DROP TABLE IF EXISTS `seat_locks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `seat_locks` (
+  `id_lock` int NOT NULL AUTO_INCREMENT,
+  `id_showtime` int NOT NULL,
+  `id_seats` int NOT NULL,
+  `session_id` varchar(100) NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`id_lock`),
+  UNIQUE KEY `UQ_ShowtimeSeat` (`id_showtime`,`id_seats`),
+  KEY `FK_SeatLock_Seat` (`id_seats`),
+  KEY `FK_SeatLock_Showtime` (`id_showtime`),
+  CONSTRAINT `FK_SeatLock_Seat` FOREIGN KEY (`id_seats`) REFERENCES `seat` (`id_seats`) ON DELETE CASCADE,
+  CONSTRAINT `FK_SeatLock_Showtime` FOREIGN KEY (`id_showtime`) REFERENCES `showtimes` (`id_showtime`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=81 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `seat_type`
+--
+
+DROP TABLE IF EXISTS `seat_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `seat_type` (
+  `id_seattype` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `price_multiplier` decimal(3,2) NOT NULL DEFAULT '1.00',
+  `description` varchar(255) DEFAULT NULL,
+  `icon_url` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_seattype`),
+  UNIQUE KEY `UQ_SeatTypeName` (`type_name`),
+  CONSTRAINT `chk_price_multiplier` CHECK ((`price_multiplier` > 0))
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `showtimes`
+--
+
+DROP TABLE IF EXISTS `showtimes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `showtimes` (
+  `id_showtime` int NOT NULL AUTO_INCREMENT,
+  `id_movie` int DEFAULT NULL,
+  `id_screen` int DEFAULT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `show_date` date NOT NULL,
+  `format` varchar(10) DEFAULT '2D',
+  `language` varchar(50) DEFAULT NULL,
+  `subtitle` varchar(50) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'available',
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00',
+  PRIMARY KEY (`id_showtime`),
+  UNIQUE KEY `UQ_Showtime` (`id_screen`,`show_date`,`start_time`),
+  KEY `fk_showtimes_movie` (`id_movie`),
+  CONSTRAINT `fk_showtimes_movie` FOREIGN KEY (`id_movie`) REFERENCES `movies` (`id_movie`) ON DELETE CASCADE,
+  CONSTRAINT `fk_showtimes_screen` FOREIGN KEY (`id_screen`) REFERENCES `screen` (`id_screen`) ON DELETE CASCADE,
+  CONSTRAINT `chk_showtime_format` CHECK ((`format` in (_utf8mb4'2D',_utf8mb4'3D',_utf8mb4'4DX',_utf8mb4'IMAX'))),
+  CONSTRAINT `chk_showtime_status` CHECK ((`status` in (_utf8mb4'available',_utf8mb4'sold out',_utf8mb4'cancelled'))),
+  CONSTRAINT `chk_showtimes_times` CHECK ((`end_time` > `start_time`))
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `staff`
+--
+
+DROP TABLE IF EXISTS `staff`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `staff` (
+  `id_staff` int NOT NULL AUTO_INCREMENT,
+  `id_typestaff` int DEFAULT NULL,
+  `staff_name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `hire_date` date DEFAULT (curdate()),
+  `status` varchar(20) DEFAULT 'active',
+  `profile_image` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_staff`),
+  UNIQUE KEY `UQ_StaffEmail` (`email`),
+  KEY `fk_staff_type` (`id_typestaff`),
+  CONSTRAINT `fk_staff_type` FOREIGN KEY (`id_typestaff`) REFERENCES `type_staff` (`id_typestaff`),
+  CONSTRAINT `chk_staff_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket`
+--
+
+DROP TABLE IF EXISTS `ticket`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket` (
+  `id_ticket` int NOT NULL AUTO_INCREMENT,
+  `id_booking` int NOT NULL,
+  `id_seats` int NOT NULL,
+  `id_tickettype` int NOT NULL,
+  `ticket_code` varchar(20) DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `status` varchar(20) DEFAULT 'valid',
+  PRIMARY KEY (`id_ticket`),
+  UNIQUE KEY `UQ_TicketCode` (`ticket_code`),
+  KEY `fk_ticket_booking` (`id_booking`),
+  KEY `fk_ticket_seat` (`id_seats`),
+  KEY `fk_ticket_type` (`id_tickettype`),
+  CONSTRAINT `fk_ticket_booking` FOREIGN KEY (`id_booking`) REFERENCES `bookings` (`id_booking`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ticket_seat` FOREIGN KEY (`id_seats`) REFERENCES `seat` (`id_seats`),
+  CONSTRAINT `fk_ticket_type` FOREIGN KEY (`id_tickettype`) REFERENCES `ticket_type` (`id_tickettype`),
+  CONSTRAINT `chk_ticket_price` CHECK ((`price` >= 0)),
+  CONSTRAINT `chk_ticket_status` CHECK ((`status` in (_utf8mb4'valid',_utf8mb4'used',_utf8mb4'expired',_utf8mb4'cancelled')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_seat_constraint`
+--
+
+DROP TABLE IF EXISTS `ticket_seat_constraint`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket_seat_constraint` (
+  `id_tickettype` int NOT NULL,
+  `id_seattype` int NOT NULL,
+  PRIMARY KEY (`id_tickettype`,`id_seattype`),
+  KEY `fk_ticketseat_seat` (`id_seattype`),
+  CONSTRAINT `fk_ticketseat_seat` FOREIGN KEY (`id_seattype`) REFERENCES `seat_type` (`id_seattype`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ticketseat_ticket` FOREIGN KEY (`id_tickettype`) REFERENCES `ticket_type` (`id_tickettype`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_type`
+--
+
+DROP TABLE IF EXISTS `ticket_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket_type` (
+  `id_tickettype` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `price_multiplier` decimal(3,2) NOT NULL DEFAULT '1.00',
+  `age_min` int DEFAULT NULL,
+  `age_max` int DEFAULT NULL,
+  `required_id` tinyint(1) DEFAULT '0',
+  `icon_url` varchar(255) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `fixed_price` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`id_tickettype`),
+  UNIQUE KEY `UQ_TicketTypeName` (`type_name`),
+  CONSTRAINT `chk_ticket_price_multiplier` CHECK ((`price_multiplier` > 0)),
+  CONSTRAINT `chk_ticket_type_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `type_member`
+--
+
+DROP TABLE IF EXISTS `type_member`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `type_member` (
+  `id_typemember` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `priority` int DEFAULT '1',
+  PRIMARY KEY (`id_typemember`),
+  UNIQUE KEY `UQ_TypeMemberName` (`type_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `type_product`
+--
+
+DROP TABLE IF EXISTS `type_product`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `type_product` (
+  `id_typeproduct` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_typeproduct`),
+  UNIQUE KEY `UQ_ProductTypeName` (`type_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `type_staff`
+--
+
+DROP TABLE IF EXISTS `type_staff`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `type_staff` (
+  `id_typestaff` int NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `permission_level` int NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id_typestaff`),
+  UNIQUE KEY `UQ_StaffTypeName` (`type_name`),
+  CONSTRAINT `chk_permission_level` CHECK ((`permission_level` between 1 and 10))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_logs`
+--
+
+DROP TABLE IF EXISTS `user_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_logs` (
+  `id_userlog` int NOT NULL AUTO_INCREMENT,
+  `id_users` int DEFAULT NULL,
+  `action_type` varchar(50) NOT NULL,
+  `action_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `device_info` varchar(255) DEFAULT NULL,
+  `additional_info` text,
+  PRIMARY KEY (`id_userlog`),
+  KEY `fk_userlog_user` (`id_users`),
+  CONSTRAINT `fk_userlog_user` FOREIGN KEY (`id_users`) REFERENCES `users` (`id_users`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `id_users` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `gender` varchar(10) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `profile_image` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `role` varchar(20) DEFAULT 'user',
+  `status` varchar(20) DEFAULT 'active',
+  `reset_token` varchar(255) DEFAULT NULL,
+  `reset_token_expiry` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_users`),
+  UNIQUE KEY `UQ_UserEmail` (`email`),
+  UNIQUE KEY `UQ_Username` (`username`),
+  CONSTRAINT `chk_user_gender` CHECK ((`gender` in (_utf8mb4'Male',_utf8mb4'Female',_utf8mb4'Other'))),
+  CONSTRAINT `chk_user_role` CHECK ((`role` in (_utf8mb4'admin',_utf8mb4'user'))),
+  CONSTRAINT `chk_user_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive')))
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-11-05 20:03:49
