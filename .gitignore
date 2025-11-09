@@ -46,3 +46,7 @@ app.*.map.json
 
 .env
 scripts/ngrok-*.log
+
+*.ps1
+*.bat
+*.cmd
