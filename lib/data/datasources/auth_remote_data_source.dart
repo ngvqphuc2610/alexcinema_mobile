@@ -1,0 +1,29 @@
+import '../models/dto/auth_request_dto.dart';
+import '../models/dto/auth_response_dto.dart';
+import '../models/entity/user_entity.dart';
+import '../services/api_client.dart';
+import '../services/api_utils.dart';
+
+class AuthRemoteDataSource {
+  const AuthRemoteDataSource(this._client);
+
+  final ApiClient _client;
+
+  Future<AuthResponseDto> login(LoginRequestDto dto) async {
+    final response = await _client.post('auth/login', body: dto.toJson());
+    final map = ensureMap(response, errorMessage: 'Invalid auth response');
+    return AuthResponseDto.fromJson(map);
+  }
+
+  Future<AuthResponseDto> register(RegisterRequestDto dto) async {
+    final response = await _client.post('auth/register', body: dto.toJson());
+    final map = ensureMap(response, errorMessage: 'Invalid register response');
+    return AuthResponseDto.fromJson(map);
+  }
+
+  Future<UserEntity> fetchProfile() async {
+    final response = await _client.get('auth/me');
+    final map = ensureMap(response, errorMessage: 'Invalid profile response');
+    return UserEntity.fromJson(map);
+  }
+}
