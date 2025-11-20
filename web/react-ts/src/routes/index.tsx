@@ -9,6 +9,14 @@ import MoviesPage from '../pages/movies/MoviesPage';
 import ShowtimesPage from '../pages/showtimes/ShowtimesPage';
 import BookingsPage from '../pages/bookings/BookingsPage';
 import PromotionsPage from '../pages/promotions/PromotionsPage';
+import CinemasPage from '../pages/cinemas/CinemasPage';
+import ScreensPage from '../pages/screen/ScreensPage';
+import SeatsPage from '../pages/seats/SeatsPage';
+import EntertainmentPage from '../pages/entertainment/EntertainmentPage';
+import MembersPage from '../pages/members/MembersPage';
+import MembershipsPage from '../pages/memberships/MembershipsPage';
+import StaffsPage from '../pages/staffs/StaffsPage';
+import ContactsPage from '../pages/contacts/ContactsPage';
 
 const ProtectedRoute = () => {
   const { user, isLoading } = useAuth();
@@ -43,6 +51,14 @@ export const router = createBrowserRouter([
           { path: 'showtimes', element: <ShowtimesPage /> },
           { path: 'bookings', element: <BookingsPage /> },
           { path: 'promotions', element: <PromotionsPage /> },
+          { path: 'cinemas', element: <CinemasPage /> },
+          { path: 'screens', element: <ScreensPage /> },
+          { path: 'seats', element: <SeatsPage /> },
+          { path: 'entertainment', element: <EntertainmentPage /> },
+          { path: 'members', element: <MembersPage /> },
+          { path: 'memberships', element: <MembershipsPage /> },
+          { path: 'staff', element: <StaffsPage /> },
+          { path: 'contacts', element: <ContactsPage /> },
         ],
       },
     ],
@@ -52,4 +68,3 @@ export const router = createBrowserRouter([
     element: <Navigate to="/dashboard" replace />,
   },
 ]);
-

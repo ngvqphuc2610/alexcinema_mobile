@@ -6,6 +6,7 @@ import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/datasources/cinema_remote_data_source.dart';
 import '../../data/datasources/entertainment_remote_data_source.dart';
 import '../../data/datasources/movie_remote_data_source.dart';
+import '../../data/datasources/product_remote_data_source.dart';
 import '../../data/datasources/promotion_remote_data_source.dart';
 import '../../data/datasources/screen_remote_data_source.dart';
 import '../../data/datasources/screen_type_remote_data_source.dart';
@@ -15,6 +16,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/cinema_repository.dart';
 import '../../data/repositories/entertainment_repository.dart';
 import '../../data/repositories/movie_repository.dart';
+import '../../data/repositories/product_repository.dart';
 import '../../data/repositories/promotion_repository.dart';
 import '../../data/repositories/screen_repository.dart';
 import '../../data/repositories/screen_type_repository.dart';
@@ -26,6 +28,7 @@ import '../../domain/services/auth_service.dart';
 import '../../domain/services/cinema_service.dart';
 import '../../domain/services/entertainment_service.dart';
 import '../../domain/services/movie_service.dart';
+import '../../domain/services/product_service.dart';
 import '../../domain/services/promotion_service.dart';
 import '../../domain/services/screen_service.dart';
 import '../../domain/services/screen_type_service.dart';
@@ -85,6 +88,7 @@ void _registerDataSources() {
     () => EntertainmentRemoteDataSource(sl()),
   );
   sl.registerLazySingleton<MovieRemoteDataSource>(() => MovieRemoteDataSource(sl()));
+  sl.registerLazySingleton<ProductRemoteDataSource>(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton<PromotionRemoteDataSource>(() => PromotionRemoteDataSource(sl()));
   sl.registerLazySingleton<ScreenRemoteDataSource>(() => ScreenRemoteDataSource(sl()));
   sl.registerLazySingleton<ScreenTypeRemoteDataSource>(() => ScreenTypeRemoteDataSource(sl()));
@@ -103,6 +107,7 @@ void _registerRepositories() {
   sl.registerLazySingleton<CinemaRepository>(() => CinemaRepository(sl()));
   sl.registerLazySingleton<EntertainmentRepository>(() => EntertainmentRepository(sl()));
   sl.registerLazySingleton<MovieRepository>(() => MovieRepository(sl()));
+  sl.registerLazySingleton<ProductRepository>(() => ProductRepository(sl()));
   sl.registerLazySingleton<PromotionRepository>(() => PromotionRepository(sl()));
   sl.registerLazySingleton<ScreenRepository>(() => ScreenRepository(sl()));
   sl.registerLazySingleton<ScreenTypeRepository>(() => ScreenTypeRepository(sl()));
@@ -115,6 +120,7 @@ void _registerServices() {
   sl.registerLazySingleton<CinemaService>(() => CinemaService(sl()));
   sl.registerLazySingleton<EntertainmentService>(() => EntertainmentService(sl()));
   sl.registerLazySingleton<MovieService>(() => MovieService(sl()));
+  sl.registerLazySingleton<ProductService>(() => ProductService(sl()));
   sl.registerLazySingleton<PromotionService>(() => PromotionService(sl()));
   sl.registerLazySingleton<ScreenService>(() => ScreenService(sl()));
   sl.registerLazySingleton<ScreenTypeService>(() => ScreenTypeService(sl()));
@@ -135,11 +141,11 @@ void _registerBlocs() {
 }
 
 String _resolveBaseUrl() {
-  final env = dotenv.env;
+  final env = dotenv.isInitialized ? dotenv.env : const <String, String>{};
   final candidates = <String?>[
     env['API_BASE_URL'],
     env['BASE_URL'],
-    env['VITE_API_URL'],
+    env['FLUTTER_API_URL'],
   ];
 
   for (final candidate in candidates) {

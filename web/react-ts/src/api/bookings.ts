@@ -1,5 +1,6 @@
 import type { Booking, PaginatedResource } from '../types';
 import apiClient from './client';
+import { removeEmpty } from '../utils/api';
 
 export interface BookingQueryParams extends Record<string, unknown> {
   page?: number;
@@ -28,16 +29,6 @@ export interface BookingPayload extends Record<string, unknown> {
 }
 
 export interface UpdateBookingPayload extends Partial<BookingPayload> {}
-
-const removeEmpty = <T extends Record<string, unknown>>(payload: T) => {
-  const result: Record<string, unknown> = {};
-  Object.entries(payload).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      result[key] = value;
-    }
-  });
-  return result;
-};
 
 export const fetchBookings = async (params: BookingQueryParams = {}): Promise<PaginatedResource<Booking>> => {
   const { data } = await apiClient.get<PaginatedResource<Booking>>('/bookings', { params: removeEmpty(params) });

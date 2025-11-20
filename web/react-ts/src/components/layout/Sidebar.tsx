@@ -6,6 +6,14 @@ import {
   Clock,
   Ticket,
   PercentCircle,
+  Building2,
+  DoorOpen,
+  Armchair,
+  Sparkles,
+  UserPlus2,
+  Gem,
+  UserCog,
+  Mail,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -16,6 +24,14 @@ const navItems = [
   { to: '/showtimes', label: 'Suat chieu', icon: Clock },
   { to: '/bookings', label: 'Dat ve', icon: Ticket },
   { to: '/promotions', label: 'Khuyen mai', icon: PercentCircle },
+  { to: '/cinemas', label: 'Rap', icon: Building2 },
+  { to: '/screens', label: 'Phong chieu', icon: DoorOpen },
+  { to: '/seats', label: 'Ghe', icon: Armchair },
+  { to: '/entertainment', label: 'Su kien', icon: Sparkles },
+  { to: '/members', label: 'Thanh vien', icon: UserPlus2 },
+  { to: '/memberships', label: 'Membership', icon: Gem },
+  { to: '/staff', label: 'Nhan vien', icon: UserCog },
+  { to: '/contacts', label: 'Lien he', icon: Mail },
 ];
 
 const Sidebar = () => (
@@ -50,4 +66,3 @@ const Sidebar = () => (
 );
 
 export default Sidebar;
-

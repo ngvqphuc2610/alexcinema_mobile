@@ -1,5 +1,6 @@
 import type { Movie, PaginatedResource } from '../types';
 import apiClient from './client';
+import { removeEmpty } from '../utils/api';
 
 export interface MovieQueryParams extends Record<string, unknown> {
   page?: number;
@@ -26,16 +27,6 @@ export interface MoviePayload extends Record<string, unknown> {
   ageRestriction?: string;
   status: string;
 }
-
-const removeEmpty = <T extends Record<string, unknown>>(payload: T) => {
-  const result: Record<string, unknown> = {};
-  Object.entries(payload).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      result[key] = value;
-    }
-  });
-  return result;
-};
 
 export const fetchMovies = async (params: MovieQueryParams = {}): Promise<PaginatedResource<Movie>> => {
   const { data } = await apiClient.get<PaginatedResource<Movie>>('/movies', { params: removeEmpty(params) });

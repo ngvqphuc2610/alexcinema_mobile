@@ -57,12 +57,37 @@ export interface Movie {
   status: MovieStatus;
 }
 
+export interface Cinema {
+  id_cinema: number;
+  cinema_name: string;
+  address: string;
+  city: string;
+  description?: string | null;
+  image?: string | null;
+  contact_number?: string | null;
+  email?: string | null;
+  status: string;
+  _count?: {
+    screens: number;
+    operation_hours: number;
+  };
+}
+
+export interface ScreenType {
+  id_screentype: number;
+  type_name: string;
+  description?: string | null;
+}
+
 export interface Screen {
   id_screen: number;
   id_cinema?: number | null;
+  id_screentype?: number | null;
   screen_name: string;
   capacity: number;
   status: string;
+  cinema?: Cinema | null;
+  screen_type?: ScreenType | null;
 }
 
 export interface Showtime {
@@ -96,6 +121,98 @@ export interface Promotion {
   status: string;
 }
 
+export interface Seat {
+  id_seats: number;
+  id_screen?: number | null;
+  id_seattype?: number | null;
+  seat_row: string;
+  seat_number: number;
+  status?: string | null;
+}
+
+export interface Membership {
+  id_membership: number;
+  code: string;
+  title: string;
+  image?: string | null;
+  link?: string | null;
+  description?: string | null;
+  benefits?: string | null;
+  criteria?: string | null;
+  status: string;
+}
+
+export interface TypeMember {
+  id_typemember: number;
+  type_name: string;
+  description?: string | null;
+  priority: number;
+}
+
+export interface Member {
+  id_member: number;
+  id_user?: number | null;
+  id_typemember?: number | null;
+  id_membership?: number | null;
+  points?: number | null;
+  join_date?: string | null;
+  status: string;
+  user?: User | null;
+  type_member?: TypeMember | null;
+  membership?: Membership | null;
+}
+
+export interface TypeStaff {
+  id_typestaff: number;
+  type_name: string;
+  description?: string | null;
+  permission_level: number;
+}
+
+export interface Staff {
+  id_staff: number;
+  id_typestaff?: number | null;
+  staff_name: string;
+  email: string;
+  phone_number?: string | null;
+  address?: string | null;
+  date_of_birth?: string | null;
+  hire_date?: string | null;
+  status?: string | null;
+  profile_image?: string | null;
+  type_staff?: TypeStaff | null;
+}
+
+export interface Contact {
+  id_contact: number;
+  id_staff?: number | null;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  contact_date: string;
+  status: string;
+  reply?: string | null;
+  reply_date?: string | null;
+  staff?: Staff | null;
+}
+
+export interface Entertainment {
+  id_entertainment: number;
+  id_cinema?: number | null;
+  title: string;
+  description?: string | null;
+  image_url?: string | null;
+  start_date: string;
+  end_date?: string | null;
+  status?: string | null;
+  views_count?: number | null;
+  featured?: boolean | null;
+  id_staff?: number | null;
+  cinema?: Cinema | null;
+  staff?: Staff | null;
+}
+
 export interface Booking {
   id_booking: number;
   id_users?: number | null;
@@ -124,4 +241,3 @@ export interface PaginationParams {
   limit?: number;
   search?: string;
 }
-

@@ -1,5 +1,6 @@
 import type { PaginatedResource, Showtime } from '../types';
 import apiClient from './client';
+import { removeEmpty } from '../utils/api';
 
 export interface ShowtimeQueryParams extends Record<string, unknown> {
   page?: number;
@@ -23,16 +24,6 @@ export interface ShowtimePayload extends Record<string, unknown> {
   status?: string;
   price: number;
 }
-
-const removeEmpty = <T extends Record<string, unknown>>(payload: T) => {
-  const result: Record<string, unknown> = {};
-  Object.entries(payload).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      result[key] = value;
-    }
-  });
-  return result;
-};
 
 export const fetchShowtimes = async (params: ShowtimeQueryParams = {}): Promise<PaginatedResource<Showtime>> => {
   const { data } = await apiClient.get<PaginatedResource<Showtime>>('/showtimes', { params: removeEmpty(params) });

@@ -27,4 +27,8 @@ class AuthService {
   Future<void> logout() {
     return _repository.logout();
   }
+
+  Future<String> requestPasswordReset(ForgotPasswordRequestDto dto) {
+    return _repository.requestPasswordReset(dto);
+  }
 }

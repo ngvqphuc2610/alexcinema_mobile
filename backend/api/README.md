@@ -42,6 +42,9 @@ $ npm run start:dev
 
 # production mode
 $ npm run start:prod
+
+# run backend together with ngrok (updates env files automatically)
+$ npm run dev:ngrok
 ```
 
 ## Run tests
