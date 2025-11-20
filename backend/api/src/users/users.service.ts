@@ -46,9 +46,9 @@ export class UsersService {
     const where: Prisma.usersWhereInput = params.search
       ? {
           OR: [
-            { username: { contains: params.search} },
-            { email: { contains: params.search} },
-            { full_name: { contains: params.search} },
+            { username: { contains: params.search } },
+            { email: { contains: params.search } },
+            { full_name: { contains: params.search } },
           ],
         }
       : {};
@@ -80,11 +80,29 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<users | null> {
-    return this.prisma.users.findUnique({ where: { email: email.toLowerCase() } });
+    return this.prisma.users.findUnique({
+      where: { email: email.toLowerCase() },
+    });
   }
 
   async findByUsername(username: string): Promise<users | null> {
-    return this.prisma.users.findUnique({ where: { username: username.trim() } });
+    return this.prisma.users.findUnique({
+      where: { username: username.trim() },
+    });
+  }
+
+  async setResetToken(
+    userId: number,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.prisma.users.update({
+      where: { id_users: userId },
+      data: {
+        reset_token: token,
+        reset_token_expiry: expiresAt,
+      },
+    });
   }
 
   async update(id: number, dto: UpdateUserDto): Promise<UserEntity> {
@@ -127,7 +145,9 @@ export class UsersService {
   }
 
   private async getUserOrThrow(id: number): Promise<users> {
-    const user = await this.prisma.users.findUnique({ where: { id_users: id } });
+    const user = await this.prisma.users.findUnique({
+      where: { id_users: id },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -144,5 +164,3 @@ export class UsersService {
     return bcrypt.hash(password, 10);
   }
 }
-
-

@@ -6,6 +6,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const port = process.env.PORT || 3000;
+
+  // debug: show env values backend đang nhận
+  console.log('>>> Backend ENV check:', {
+    API_URL: process.env.API_URL,
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT,
+    // thêm các key khác bạn quan tâm
+  });
+
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
@@ -45,7 +55,6 @@ async function bootstrap() {
     });
   }
 
-  const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
 
   const baseUrl = await app.getUrl();

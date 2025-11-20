@@ -40,3 +40,20 @@ class RegisterRequestDto {
     }..removeWhere((_, value) => value == null);
   }
 }
+
+class ForgotPasswordRequestDto {
+  const ForgotPasswordRequestDto({
+    required this.username,
+    required this.email,
+  });
+
+  final String username;
+  final String email;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'username': username.trim(),
+      'email': email.trim(),
+    };
+  }
+}

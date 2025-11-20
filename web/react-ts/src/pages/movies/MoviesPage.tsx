@@ -101,6 +101,11 @@ const MoviesPage = () => {
   const columns = useMemo(
     () => [
       {
+        key: 'image',
+        title: 'Hinh anh',
+        render: (movie: Movie) => movie.poster_image ? (<img src={movie.poster_image} alt={movie.title} className="table-image" />) : ('--'),
+      },
+      {
         key: 'title',
         title: 'Ten phim',
         render: (movie: Movie) => movie.title,

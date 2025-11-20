@@ -26,4 +26,13 @@ class AuthRemoteDataSource {
     final map = ensureMap(response, errorMessage: 'Invalid profile response');
     return UserEntity.fromJson(map);
   }
+
+  Future<String> requestPasswordReset(ForgotPasswordRequestDto dto) async {
+    final response =
+        await _client.post('auth/forgot-password', body: dto.toJson());
+    final map =
+        ensureMap(response, errorMessage: 'Invalid forgot password response');
+    return (map['message'] as String?) ??
+        'Yêu cầu đặt lại mật khẩu đã được gửi.';
+  }
 }

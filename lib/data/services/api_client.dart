@@ -6,10 +6,8 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 
 class ApiClient {
-  ApiClient({
-    required this.baseUrl,
-    http.Client? httpClient,
-  }) : _httpClient = httpClient ?? http.Client();
+  ApiClient({required this.baseUrl, http.Client? httpClient})
+    : _httpClient = httpClient ?? http.Client();
 
   final String baseUrl;
   final http.Client _httpClient;
@@ -19,15 +17,8 @@ class ApiClient {
     _authToken = token?.isNotEmpty == true ? token : null;
   }
 
-  Future<dynamic> get(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-  }) {
-    return _send(
-      'GET',
-      path,
-      queryParameters: queryParameters,
-    );
+  Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) {
+    return _send('GET', path, queryParameters: queryParameters);
   }
 
   Future<dynamic> post(
@@ -35,12 +26,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Object? body,
   }) {
-    return _send(
-      'POST',
-      path,
-      queryParameters: queryParameters,
-      body: body,
-    );
+    return _send('POST', path, queryParameters: queryParameters, body: body);
   }
 
   Future<dynamic> patch(
@@ -48,12 +34,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Object? body,
   }) {
-    return _send(
-      'PATCH',
-      path,
-      queryParameters: queryParameters,
-      body: body,
-    );
+    return _send('PATCH', path, queryParameters: queryParameters, body: body);
   }
 
   Future<dynamic> delete(
@@ -61,12 +42,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Object? body,
   }) {
-    return _send(
-      'DELETE',
-      path,
-      queryParameters: queryParameters,
-      body: body,
-    );
+    return _send('DELETE', path, queryParameters: queryParameters, body: body);
   }
 
   Future<dynamic> _send(
@@ -79,6 +55,9 @@ class ApiClient {
     final headers = <String, String>{
       HttpHeaders.acceptHeader: 'application/json',
       HttpHeaders.contentTypeHeader: 'application/json',
+      // Add ngrok bypass header for ngrok tunnels
+      'ngrok-skip-browser-warning': 'true',
+      'User-Agent': 'AlexCinema-Flutter-App',
     };
     if (_authToken != null) {
       headers[HttpHeaders.authorizationHeader] = 'Bearer $_authToken';
@@ -125,7 +104,8 @@ class ApiClient {
     }
 
     final message = decoded is Map<String, dynamic>
-        ? (decoded['message'] as String?) ?? 'Request failed with status $statusCode'
+        ? (decoded['message'] as String?) ??
+              'Request failed with status $statusCode'
         : 'Request failed with status $statusCode';
 
     throw ApiException(
