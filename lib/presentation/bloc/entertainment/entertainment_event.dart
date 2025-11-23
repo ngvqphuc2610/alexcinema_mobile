@@ -10,7 +10,7 @@ abstract class EntertainmentEvent extends Equatable {
 }
 
 class EntertainmentRequested extends EntertainmentEvent {
-  const EntertainmentRequested({this.query});
+  const EntertainmentRequested({this.query });
 
   final EntertainmentQueryDto? query;
 

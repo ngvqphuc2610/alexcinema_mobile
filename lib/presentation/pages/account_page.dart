@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/services/biometric_service.dart';
+import '../../data/models/entity/user_entity.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
 import '../bloc/auth/auth_state.dart';
@@ -8,6 +10,7 @@ import '../bloc/common/bloc_status.dart';
 import '../widgets/buttons/btnRegisLogin.dart';
 import 'login_page.dart';
 import 'register_page.dart';
+import 'two_factor/two_factor_settings_page.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -23,8 +26,7 @@ class AccountPage extends StatelessWidget {
               if (state.isAuthenticated)
                 IconButton(
                   icon: const Icon(Icons.logout),
-                  onPressed: () =>
-                      context.read<AuthBloc>().add(const AuthLogoutRequested()),
+                  onPressed: () => context.read<AuthBloc>().add(const AuthLogoutRequested()),
                   tooltip: 'Đăng xuất',
                 ),
             ],
@@ -40,7 +42,7 @@ class AccountPage extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.isAuthenticated && state.user != null) {
-      return _AuthenticatedView(user: state.user!.fullName, email: state.user!.email);
+      return _AuthenticatedView(user: state.user!);
     }
     return _GuestView(
       onLogin: () => _openLogin(context),
@@ -88,7 +90,7 @@ class _GuestView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Hãy đăng nhập hoặc tạo tài khoản để quản lý thông tin, vé và bảo mật 2FA.',
+            'Hãy đăng nhập hoặc tạo tài khoản để quản lý thông tin và bảo mật 2FA.',
             style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
             textAlign: TextAlign.center,
           ),
@@ -109,18 +111,116 @@ class _GuestView extends StatelessWidget {
   }
 }
 
-class _AuthenticatedView extends StatelessWidget {
-  const _AuthenticatedView({
-    required this.user,
-    required this.email,
-  });
+class _AuthenticatedView extends StatefulWidget {
+  const _AuthenticatedView({required this.user});
 
-  final String user;
-  final String email;
+  final UserEntity user;
+
+  @override
+  State<_AuthenticatedView> createState() => _AuthenticatedViewState();
+}
+
+class _AuthenticatedViewState extends State<_AuthenticatedView> {
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  bool _biometricLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricStatus();
+  }
+
+  Future<void> _loadBiometricStatus() async {
+    final available = await BiometricAuth.canAuthenticate();
+    final enabled = available ? await BiometricAuth.isEnabled(widget.user.id.toString()) : false;
+    if (!mounted) return;
+    setState(() {
+      _biometricAvailable = available;
+      _biometricEnabled = available && enabled;
+      _biometricLoading = false;
+    });
+  }
+
+  Future<void> _toggleBiometric(bool enable) async {
+    if (_biometricLoading) return;
+    if (enable) {
+      if (!_biometricAvailable) {
+        _showMessage('Thiết bị của bạn không hỗ trợ sinh trắc học.');
+        return;
+      }
+      final approved = await BiometricAuth.authenticate(
+        reason: 'Xác thực để bật đăng nhập vân tay',
+      );
+      if (!approved) {
+        _showMessage('Không thể bật đăng nhập vân tay.');
+        return;
+      }
+      final password = await _askPassword();
+      if (password == null || password.trim().isEmpty) {
+        return;
+      }
+      await BiometricAuth.saveAccount(
+        BiometricAccount(
+          userId: widget.user.id.toString(),
+          email: widget.user.email,
+          password: password.trim(),
+          fullName: widget.user.fullName,
+          role: widget.user.role,
+        ),
+      );
+      await BiometricAuth.setEnabled(widget.user.id.toString(), true);
+      if (!mounted) return;
+      setState(() => _biometricEnabled = true);
+      _showMessage('Đã bật đăng nhập sinh trắc học.');
+      return;
+    }
+
+    await BiometricAuth.deleteAccount(widget.user.id.toString());
+    if (!mounted) return;
+    setState(() => _biometricEnabled = false);
+    _showMessage('Đã tắt đăng nhập sinh trắc học.');
+  }
+
+  Future<String?> _askPassword() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nhập mật khẩu của bạn'),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'Mật khẩu hiện tại',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Lưu'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final fullName = widget.user.fullName;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -136,9 +236,9 @@ class _AuthenticatedView extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                      backgroundColor: theme.primaryColor.withOpacity(0.15),
                       child: Text(
-                        user.isNotEmpty ? user[0] : '?',
+                        fullName.isNotEmpty ? fullName[0] : '?',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: theme.primaryColor,
                         ),
@@ -150,14 +250,14 @@ class _AuthenticatedView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user,
+                            fullName,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            email,
+                            widget.user.email,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.black54,
                             ),
@@ -176,16 +276,39 @@ class _AuthenticatedView extends StatelessWidget {
                 ListTile(
                   leading: Icon(Icons.fingerprint, color: theme.primaryColor),
                   title: const Text('Đăng nhập sinh trắc'),
-                  subtitle: const Text('Bật xác thực vân tay / Face ID'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  subtitle: Text(
+                    _biometricLoading
+                        ? 'Đang kiểm tra hỗ trợ...'
+                        : _biometricAvailable
+                            ? 'Bật xác thực vân tay / Face ID để đăng nhập nhanh.'
+                            : 'Thiết bị không hỗ trợ sinh trắc học.',
+                  ),
+                  trailing: _biometricLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Switch.adaptive(
+                          value: _biometricEnabled,
+                          onChanged: _biometricAvailable ? _toggleBiometric : null,
+                        ),
+                  onTap: _biometricLoading || !_biometricAvailable
+                      ? null
+                      : () => _toggleBiometric(!_biometricEnabled),
                 ),
                 ListTile(
                   leading: Icon(Icons.shield_outlined, color: theme.primaryColor),
                   title: const Text('Mã OTP & TOTP'),
                   subtitle: const Text('Quản lý OTP, TOTP Google Authenticator'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TwoFactorSettingsPage(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

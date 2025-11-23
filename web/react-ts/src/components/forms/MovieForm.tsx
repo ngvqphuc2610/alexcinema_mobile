@@ -1,9 +1,11 @@
+import { useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Button from '../common/Button';
 import FormField from './FormField';
 import type { MovieStatus } from '../../types';
+import { uploadImage } from '../../api/uploads';
 
 const movieStatusOptions: Record<MovieStatus, string> = {
   'coming soon': 'Sap chieu',
@@ -60,6 +62,7 @@ const MovieForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: 
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<MovieFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -83,7 +86,29 @@ const MovieForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: 
     },
   });
 
+  const [uploadingField, setUploadingField] = useState<'posterImage' | 'bannerImage' | null>(null);
+
   const handleFormSubmit = handleSubmit(async (values) => onSubmit(normalize(values)));
+
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>, field: 'posterImage' | 'bannerImage') => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingField(field);
+    try {
+      const response = await uploadImage(file);
+      setValue(field, response.url);
+    } catch (error) {
+      console.error('Failed to upload image', error);
+      window.alert('Tai anh that bai, vui long thu lai.');
+    } finally {
+      setUploadingField(null);
+      // allow uploading the same file again if needed
+      event.target.value = '';
+    }
+  };
 
   return (
     <form className="form" onSubmit={handleFormSubmit}>
@@ -141,9 +166,23 @@ const MovieForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: 
       <div className="form__grid form__grid--two">
         <FormField label="Poster" htmlFor="movie-posterImage" error={errors.posterImage?.message}>
           <input id="movie-posterImage" {...register('posterImage')} placeholder="URL poster" />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) => handleFileUpload(event, 'posterImage')}
+            disabled={uploadingField === 'posterImage'}
+          />
+          {uploadingField === 'posterImage' && <small className="text-muted">Dang tai anh...</small>}
         </FormField>
         <FormField label="Banner" htmlFor="movie-bannerImage" error={errors.bannerImage?.message}>
           <input id="movie-bannerImage" {...register('bannerImage')} placeholder="URL banner" />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) => handleFileUpload(event, 'bannerImage')}
+            disabled={uploadingField === 'bannerImage'}
+          />
+          {uploadingField === 'bannerImage' && <small className="text-muted">Dang tai anh...</small>}
         </FormField>
       </div>
 
@@ -179,4 +218,3 @@ const MovieForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: 
 };
 
 export default MovieForm;
-

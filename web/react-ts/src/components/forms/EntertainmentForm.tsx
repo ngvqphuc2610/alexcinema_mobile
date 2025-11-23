@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import type { Cinema, Staff } from '../../types';
 import FormField from './FormField';
 import Button from '../common/Button';
+import { uploadImage } from '../../api/uploads';
 
 export interface EntertainmentFormValues extends Record<string, unknown> {
   idCinema?: number;
@@ -47,6 +48,7 @@ const EntertainmentForm = ({
       idStaff: staff[0]?.id_staff,
     },
   );
+  const [isUploading, setUploading] = useState(false);
 
   const handleChange = (field: keyof EntertainmentFormValues, value: string | boolean) => {
     if (field === 'viewsCount') {
@@ -62,6 +64,22 @@ const EntertainmentForm = ({
       return;
     }
     setValues((prev) => ({ ...prev, [field]: value as string }));
+  };
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadImage(file);
+      setValues((prev) => ({ ...prev, imageUrl: uploaded.url }));
+    } catch (error) {
+      console.error('Upload entertainment image failed', error);
+      window.alert('Tai anh that bai, vui long thu lai.');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
 
   return (
@@ -108,6 +126,8 @@ const EntertainmentForm = ({
           value={values.imageUrl ?? ''}
           onChange={(event) => handleChange('imageUrl', event.target.value)}
         />
+        <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+        {isUploading && <small className="text-muted">Dang tai anh...</small>}
       </FormField>
       <FormField label="Ngay bat dau" htmlFor="entertainment-start" required>
         <input

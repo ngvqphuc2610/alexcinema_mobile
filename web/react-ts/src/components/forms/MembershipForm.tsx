@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import FormField from './FormField';
 import Button from '../common/Button';
+import { uploadImage } from '../../api/uploads';
 
 export interface MembershipFormValues extends Record<string, unknown> {
   code: string;
@@ -33,9 +34,26 @@ const MembershipForm = ({ defaultValues, isSubmitting, onSubmit, onCancel }: Mem
       status: 'active',
     },
   );
+  const [isUploading, setUploading] = useState(false);
 
   const handleChange = (field: keyof MembershipFormValues, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadImage(file);
+      setValues((prev) => ({ ...prev, image: uploaded.url }));
+    } catch (error) {
+      console.error('Upload membership image failed', error);
+      window.alert('Tai anh that bai, vui long thu lai.');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
 
   return (
@@ -70,6 +88,8 @@ const MembershipForm = ({ defaultValues, isSubmitting, onSubmit, onCancel }: Mem
           value={values.image ?? ''}
           onChange={(event) => handleChange('image', event.target.value)}
         />
+        <input type="file" accept="image/*" onChange={handleUpload} disabled={isUploading} />
+        {isUploading && <small className="text-muted">Dang tai anh...</small>}
       </FormField>
       <FormField label="Lien ket" htmlFor="membership-link">
         <input

@@ -84,6 +84,20 @@ const CinemasPage = () => {
   const columns = useMemo(
     () => [
       {
+        key: 'image',
+        title: 'Anh',
+        render: (cinema: Cinema) =>
+          cinema.image ? (
+            <img
+              src={cinema.image}
+              alt={cinema.cinema_name}
+              className="table-image table-image--square"
+            />
+          ) : (
+            '--'
+          ),
+      },
+      {
         key: 'name',
         title: 'Ten rap',
         render: (cinema: Cinema) => cinema.cinema_name,

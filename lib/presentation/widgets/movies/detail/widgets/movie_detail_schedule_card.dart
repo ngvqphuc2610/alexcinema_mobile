@@ -7,7 +7,6 @@ class MovieScheduleCard extends StatelessWidget {
     required this.title,
     required this.address,
     required this.times,
-    required this.imageUrl,
     required this.isExpanded,
     required this.onToggle,
   });
@@ -15,7 +14,6 @@ class MovieScheduleCard extends StatelessWidget {
   final String title;
   final String address;
   final List<ShowtimePillData> times;
-  final String? imageUrl;
   final bool isExpanded;
   final VoidCallback onToggle;
 
@@ -78,24 +76,7 @@ class MovieScheduleCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (imageUrl?.isNotEmpty == true)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        height: 90,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          height: 90,
-                          color: Colors.white.withValues(alpha: 0.1),
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.photo_outlined, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  if (imageUrl?.isNotEmpty == true)
-                    const SizedBox(height: 10),
+                 
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,

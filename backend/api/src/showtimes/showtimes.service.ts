@@ -9,6 +9,7 @@ export interface ShowtimesQueryParams {
   limit?: number;
   movieId?: number;
   screenId?: number;
+  cinemaId?: number;
   status?: string;
   format?: string;
   showDate?: string;
@@ -41,6 +42,11 @@ export class ShowtimesService {
     const where: Prisma.showtimesWhereInput = {
       id_movie: params.movieId ?? undefined,
       id_screen: params.screenId ?? undefined,
+      screen: params.cinemaId
+        ? {
+            id_cinema: params.cinemaId,
+          }
+        : undefined,
       status: params.status?.trim(),
       format: params.format?.trim(),
       show_date: params.showDate ? new Date(params.showDate) : undefined,
@@ -54,7 +60,11 @@ export class ShowtimesService {
         orderBy: [{ show_date: 'asc' }, { start_time: 'asc' }],
         include: {
           movie: true,
-          screen: true,
+          screen: {
+            include: {
+              cinema: true,
+            },
+          },
         },
       }),
       this.prisma.showtimes.count({ where }),
@@ -76,7 +86,11 @@ export class ShowtimesService {
       where: { id_showtime: id },
       include: {
         movie: true,
-        screen: true,
+        screen: {
+          include: {
+            cinema: true,
+          },
+        },
       },
     });
     if (!record) {

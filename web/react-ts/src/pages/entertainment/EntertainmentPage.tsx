@@ -106,6 +106,20 @@ const EntertainmentPage = () => {
         render: (item: Entertainment) => item.title,
       },
       {
+        key: 'image',
+        title: 'Anh',
+        render: (item: Entertainment) =>
+          item.image_url ? (
+            <img
+              src={item.image_url}
+              alt={item.title}
+              className="table-image table-image--landscape"
+            />
+          ) : (
+            '--'
+          ),
+      },
+      {
         key: 'cinema',
         title: 'Rap',
         render: (item: Entertainment) => item.id_cinema ?? '--',
@@ -230,4 +244,3 @@ const EntertainmentPage = () => {
 };
 
 export default EntertainmentPage;
-

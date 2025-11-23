@@ -17,6 +17,8 @@ import MembersPage from '../pages/members/MembersPage';
 import MembershipsPage from '../pages/memberships/MembershipsPage';
 import StaffsPage from '../pages/staffs/StaffsPage';
 import ContactsPage from '../pages/contacts/ContactsPage';
+import ProductsPage from '../pages/products/ProductsPage';
+import ProductTypePage from '../pages/product_types/ProductTypePage';
 
 const ProtectedRoute = () => {
   const { user, isLoading } = useAuth();
@@ -53,12 +55,14 @@ export const router = createBrowserRouter([
           { path: 'promotions', element: <PromotionsPage /> },
           { path: 'cinemas', element: <CinemasPage /> },
           { path: 'screens', element: <ScreensPage /> },
+          { path: 'products', element: <ProductsPage /> },
           { path: 'seats', element: <SeatsPage /> },
           { path: 'entertainment', element: <EntertainmentPage /> },
           { path: 'members', element: <MembersPage /> },
           { path: 'memberships', element: <MembershipsPage /> },
           { path: 'staff', element: <StaffsPage /> },
           { path: 'contacts', element: <ContactsPage /> },
+          { path: 'product-types', element: <ProductTypePage /> },
         ],
       },
     ],
