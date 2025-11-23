@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 
 class ProductCard extends StatelessWidget {
@@ -142,11 +143,12 @@ class _ProductImage extends StatelessWidget {
       bottomLeft: Radius.circular(16),
     );
 
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    final resolvedUrl = _resolveImageUrl(imageUrl);
+    if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: borderRadius,
         child: Image.network(
-          imageUrl!,
+          resolvedUrl,
           width: 100,
           height: 100,
           fit: BoxFit.cover,
@@ -158,6 +160,38 @@ class _ProductImage extends StatelessWidget {
       borderRadius: borderRadius,
       child: _ImagePlaceholder(),
     );
+  }
+
+  String? _resolveImageUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final env = dotenv.env;
+    String? base = env['FLUTTER_API_URL'] ?? env['API_BASE_URL'] ?? env['BASE_URL'];
+
+    if (raw.startsWith('http')) {
+      final isLocal = raw.contains('localhost') || raw.contains('127.0.0.1') || raw.contains('10.0.2.2');
+      if (isLocal && base != null && base.isNotEmpty) {
+        final normalizedBase = _normalizeBase(base);
+        return raw.replaceFirst(RegExp(r'^https?://[^/]+'), normalizedBase);
+      }
+      return raw;
+    }
+
+    if (base == null || base.isEmpty) return raw;
+    base = _normalizeBase(base);
+    if (!raw.startsWith('/')) {
+      raw = '/$raw';
+    }
+    return '$base$raw';
+  }
+
+  String _normalizeBase(String base) {
+    if (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    if (base.toLowerCase().endsWith('/api')) {
+      base = base.substring(0, base.length - 4);
+    }
+    return base;
   }
 }
 

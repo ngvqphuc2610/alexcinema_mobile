@@ -136,7 +136,7 @@ class _MovieDetailViewState extends State<MovieDetailView> {
                         child: MovieScheduleCard(
                           title: schedule.title,
                           address: schedule.address,
-                          imageUrl: schedule.imageUrl,
+                          
                           times: schedule.showtimes
                               .map(
                                 (show) => ShowtimePillData(

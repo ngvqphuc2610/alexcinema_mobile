@@ -15,6 +15,7 @@ class UserEntity extends Equatable {
     this.gender,
     this.address,
     this.profileImage,
+    this.twoFactorEnabled = false,
   });
 
   final int id;
@@ -30,6 +31,7 @@ class UserEntity extends Equatable {
   final String? gender;
   final String? address;
   final String? profileImage;
+  final bool twoFactorEnabled;
 
   factory UserEntity.fromJson(Map<String, dynamic> json) {
     return UserEntity(
@@ -46,6 +48,7 @@ class UserEntity extends Equatable {
       gender: json['gender'] as String?,
       address: json['address'] as String?,
       profileImage: json['profile_image'] as String? ?? json['profileImage'] as String?,
+      twoFactorEnabled: json['two_factor_enabled'] as bool? ?? false,
     );
   }
 
@@ -64,6 +67,7 @@ class UserEntity extends Equatable {
       'gender': gender,
       'address': address,
       'profile_image': profileImage,
+      'two_factor_enabled': twoFactorEnabled,
     };
   }
 
@@ -78,6 +82,7 @@ class UserEntity extends Equatable {
     String? gender,
     String? address,
     String? profileImage,
+    bool? twoFactorEnabled,
   }) {
     return UserEntity(
       id: id,
@@ -93,6 +98,7 @@ class UserEntity extends Equatable {
       gender: gender ?? this.gender,
       address: address ?? this.address,
       profileImage: profileImage ?? this.profileImage,
+      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
     );
   }
 
@@ -124,5 +130,6 @@ class UserEntity extends Equatable {
         gender,
         address,
         profileImage,
+        twoFactorEnabled,
       ];
 }

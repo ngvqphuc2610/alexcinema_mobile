@@ -86,6 +86,7 @@ class ShowtimeQueryDto {
     this.limit,
     this.movieId,
     this.screenId,
+    this.cinemaId,
     this.status,
     this.format,
     this.showDate,
@@ -95,6 +96,7 @@ class ShowtimeQueryDto {
   final int? limit;
   final int? movieId;
   final int? screenId;
+  final int? cinemaId;
   final String? status;
   final String? format;
   final DateTime? showDate;
@@ -112,6 +114,9 @@ class ShowtimeQueryDto {
     }
     if (screenId != null) {
       map['screenId'] = '$screenId';
+    }
+    if (cinemaId != null) {
+      map['cinemaId'] = '$cinemaId';
     }
     if (status?.isNotEmpty == true) {
       map['status'] = status!.trim();

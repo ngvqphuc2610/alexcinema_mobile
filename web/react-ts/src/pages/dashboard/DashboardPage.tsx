@@ -13,6 +13,7 @@ import { fetchShowtimes } from '../../api/showtimes';
 import { fetchBookings } from '../../api/bookings';
 import { fetchPromotions } from '../../api/promotions';
 
+
 type DashboardSummary = {
   users: number;
   movies: number;

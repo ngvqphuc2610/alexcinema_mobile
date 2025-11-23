@@ -26,12 +26,15 @@ const navItems = [
   { to: '/promotions', label: 'Khuyen mai', icon: PercentCircle },
   { to: '/cinemas', label: 'Rap', icon: Building2 },
   { to: '/screens', label: 'Phong chieu', icon: DoorOpen },
+  { to: '/products', label: 'San pham', icon: Ticket },
   { to: '/seats', label: 'Ghe', icon: Armchair },
   { to: '/entertainment', label: 'Su kien', icon: Sparkles },
   { to: '/members', label: 'Thanh vien', icon: UserPlus2 },
   { to: '/memberships', label: 'Membership', icon: Gem },
   { to: '/staff', label: 'Nhan vien', icon: UserCog },
   { to: '/contacts', label: 'Lien he', icon: Mail },
+  { to: '/product-types', label: 'Loai san pham', icon: Ticket },
+
 ];
 
 const Sidebar = () => (

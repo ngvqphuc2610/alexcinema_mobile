@@ -5,8 +5,10 @@ import '../../../data/models/dto/movie_dto.dart';
 import '../../../data/models/entity/movie_entity.dart';
 import '../../../domain/services/movie_service.dart';
 import 'comingsoon/grid_movies_comingsoon.dart';
-import 'detail/movie_detail_view.dart';
+import 'comingsoon/list_movies_comingsoon.dart';
+import 'detail/movie_detail_screen.dart';
 import 'nowshowing/grid_movies_nowshow.dart';
+import 'nowshowing/list_movies_nowshow.dart';
 
 class MoviesPage extends StatefulWidget {
   const MoviesPage({super.key});
@@ -131,22 +133,6 @@ class _MoviesPageState extends State<MoviesPage> {
         padding: const EdgeInsets.only(bottom: 32),
         children: [
           // Section: Đang chiếu
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: const [
-                Text(
-                  'PHIM ĐANG CHIẾU',
-                  style: TextStyle(
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
           if (_isLoadingNow)
             const _NowShowingSkeleton()
           else
@@ -156,6 +142,25 @@ class _MoviesPageState extends State<MoviesPage> {
                 movies: _mapNowShowing(),
                 onBookMovie: _handleBookMovie,
                 onMovieTap: _handleBookMovie,
+              ),
+            ),
+          if (!_isLoadingNow && _nowShowing.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: _openNowShowingList,
+                  icon: const Icon(Icons.movie_filter_outlined),
+                  label: const Text('Xem tất cả'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurpleAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
               ),
             ),
 
@@ -169,6 +174,25 @@ class _MoviesPageState extends State<MoviesPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             title: 'PHIM SẮP CHIẾU',
           ),
+          if (!_isLoadingComing && _comingSoon.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: _openComingSoonList,
+                  icon: const Icon(Icons.upcoming_outlined),
+                  label: const Text('Xem tất cả'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurpleAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -225,7 +249,19 @@ class _MoviesPageState extends State<MoviesPage> {
   void _openMovieDetail(MovieEntity movie) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => MovieDetailView(movie: movie)));
+    ).push(MaterialPageRoute(builder: (_) => MovieDetailScreen(movie: movie)));
+  }
+
+  void _openNowShowingList() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NowShowingListPage()),
+    );
+  }
+
+  void _openComingSoonList() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ComingSoonListPage()),
+    );
   }
 }
 

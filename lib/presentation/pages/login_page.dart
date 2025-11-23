@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/services/biometric_service.dart';
 import '../../data/models/dto/auth_request_dto.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
 import '../bloc/auth/auth_state.dart';
 import '../bloc/common/bloc_status.dart';
+import '../widgets/BiometricLoginButton.dart';
 import '../widgets/buttons/btnRegisLogin.dart';
 import 'forgotpassword_page.dart';
 import 'register_page.dart';
@@ -23,14 +25,33 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _submitting = false;
   bool _obscurePassword = true;
+  bool _biometricAvailable = false;
+  List<BiometricAccount> _biometricAccounts = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometric();
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadBiometric() async {
+    final available = await BiometricAuth.canAuthenticate();
+    final accounts = available ? await BiometricAuth.getAccounts() : <BiometricAccount>[];
+    if (!mounted) return;
+    setState(() {
+      _biometricAvailable = available;
+      _biometricAccounts = accounts;
+    });
   }
 
   @override
@@ -40,14 +61,30 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: BlocListener<AuthBloc, AuthState>(
           listenWhen: (previous, current) => previous.status != current.status,
-          listener: (context, state) {
+          listener: (context, state) async {
             if (!_submitting) return;
             if (state.status.isFailure) {
               setState(() => _submitting = false);
               final message = state.errorMessage ?? 'Đăng nhập thất bại.';
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
             } else if (state.status.isSuccess && state.isAuthenticated) {
+              // Lưu thông tin đăng nhập cho sinh trắc học
+              if (_biometricAvailable &&
+                  _usernameController.text.isNotEmpty &&
+                  _passwordController.text.isNotEmpty) {
+                final userId = state.user?.id.toString() ?? _usernameController.text.trim();
+                await BiometricAuth.saveAccount(
+                  BiometricAccount(
+                    userId: userId,
+                    email: _usernameController.text.trim(),
+                    password: _passwordController.text.trim(),
+                    fullName: state.user?.fullName ?? '',
+                    role: state.user?.role ?? '',
+                  ),
+                );
+                await BiometricAuth.setEnabled(userId, true);
+                await _loadBiometric();
+              }
               setState(() => _submitting = false);
               Navigator.of(context).pop();
             }
@@ -78,7 +115,18 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  if (_biometricAvailable) ...[
+                    const SizedBox(height: 18),
+                    BiometricLoginButton(
+                      enabled: _biometricAccounts.isNotEmpty && !_submitting,
+                      onPressed:
+                          _biometricAccounts.isNotEmpty && !_submitting ? _loginWithBiometric : null,
+                      helperText: _biometricAccounts.isNotEmpty
+                          ? 'Đăng nhập nhanh bằng vân tay / Face ID.'
+                          : 'Bật đăng nhập sinh trắc trong trang Tài khoản.',
+                    ),
+                  ],
+                  const SizedBox(height: 20),
                   TextFormField(
                     controller: _usernameController,
                     textInputAction: TextInputAction.next,
@@ -111,8 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: (value) {
@@ -135,8 +182,7 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
-                        onPressed:
-                            _submitting ? null : () => _openForgotPassword(context),
+                        onPressed: _submitting ? null : () => _openForgotPassword(context),
                         child: const Text('Quên mật khẩu?'),
                       ),
                       Text(
@@ -146,8 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       TextButton(
-                        onPressed:
-                            _submitting ? null : () => _openRegister(context),
+                        onPressed: _submitting ? null : () => _openRegister(context),
                         child: const Text('Tạo tài khoản'),
                       ),
                     ],
@@ -161,6 +206,36 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Future<void> _loginWithBiometric() async {
+    if (_biometricAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có thông tin đăng nhập dạng vân tay.')),
+      );
+      return;
+    }
+    final account = await _pickAccount();
+    if (account == null) return;
+
+    final approved = await BiometricAuth.authenticate(
+      reason: 'Xác thực để đăng nhập bằng vân tay',
+    );
+    if (!approved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Xác thực sinh trắc không thành công.')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    context.read<AuthBloc>().add(
+          AuthLoginRequested(
+            LoginRequestDto(
+              usernameOrEmail: account.email,
+              password: account.password,
+            ),
+          ),
+        );
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -169,8 +244,8 @@ class _LoginPageState extends State<LoginPage> {
     context.read<AuthBloc>().add(
           AuthLoginRequested(
             LoginRequestDto(
-              usernameOrEmail: _usernameController.text,
-              password: _passwordController.text,
+              usernameOrEmail: _usernameController.text.trim(),
+              password: _passwordController.text.trim(),
             ),
           ),
         );
@@ -179,6 +254,40 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _openRegister(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const RegisterPage()),
+    );
+  }
+
+  Future<BiometricAccount?> _pickAccount() async {
+    if (_biometricAccounts.length == 1) return _biometricAccounts.first;
+    return showModalBottomSheet<BiometricAccount>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  'Chọn tài khoản đăng nhập',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+              ),
+              for (final acc in _biometricAccounts)
+                ListTile(
+                  leading: const Icon(Icons.fingerprint),
+                  title: Text(acc.email),
+                  subtitle: Text(acc.fullName.isNotEmpty ? acc.fullName : acc.role),
+                  onTap: () => Navigator.of(context).pop(acc),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 

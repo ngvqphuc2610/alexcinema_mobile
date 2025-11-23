@@ -97,6 +97,16 @@ const UsersPage = () => {
   const tableColumns = useMemo(
     () => [
       {
+        key: 'avatar',
+        title: 'Anh',
+        render: (user: User) =>
+          user.profile_image ? (
+            <img src={user.profile_image} alt={user.full_name} className="table-image table-image--square" />
+          ) : (
+            '--'
+          ),
+      },
+      {
         key: 'username',
         title: 'Ten dang nhap',
         render: (user: User) => user.username,

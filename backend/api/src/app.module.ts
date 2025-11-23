@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -38,6 +40,7 @@ import { TicketModule } from './ticket/ticket.module';
 import { TicketSeatConstraintModule } from './ticket_seat_constraint/ticket_seat_constraint.module';
 import { TicketTypeModule } from './ticket_type/ticket_type.module';
 import { UserLogsModule } from './user_logs/user_logs.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -45,6 +48,10 @@ import { UserLogsModule } from './user_logs/user_logs.module';
       isGlobal: true,
       expandVariables: true,
       envFilePath: [`.env.${process.env.NODE_ENV ?? 'development'}`, '.env'],
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', '..', 'assets', 'upload'),
+      serveRoot: '/uploads',
     }),
     PrismaModule,
     AuthModule,
@@ -82,9 +89,9 @@ import { UserLogsModule } from './user_logs/user_logs.module';
     TicketSeatConstraintModule,
     TicketTypeModule,
     UserLogsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
-

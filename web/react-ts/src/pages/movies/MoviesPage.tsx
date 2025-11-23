@@ -103,7 +103,12 @@ const MoviesPage = () => {
       {
         key: 'image',
         title: 'Hinh anh',
-        render: (movie: Movie) => movie.poster_image ? (<img src={movie.poster_image} alt={movie.title} className="table-image" />) : ('--'),
+        render: (movie: Movie) =>
+          movie.poster_image ? (
+            <img src={movie.poster_image} alt={movie.title} className="table-image table-image--poster" />
+          ) : (
+            '--'
+          ),
       },
       {
         key: 'title',

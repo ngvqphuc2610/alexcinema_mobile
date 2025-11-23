@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Button from '../common/Button';
 import FormField from './FormField';
+import { uploadImage } from '../../api/uploads';
 
 const baseSchema = z.object({
   username: z.string().min(4, 'Toi thieu 4 ky tu').max(50, 'Toi da 50 ky tu'),
@@ -57,6 +58,7 @@ const UserForm = ({ defaultValues, onSubmit, onCancel, mode = 'create', isSubmit
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -74,10 +76,27 @@ const UserForm = ({ defaultValues, onSubmit, onCancel, mode = 'create', isSubmit
       ...defaultValues,
     },
   });
+  const [isUploading, setUploading] = useState(false);
 
   const handleFormSubmit = handleSubmit(async (values) => {
     await onSubmit(normalizeValues(values));
   });
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadImage(file);
+      setValue('profileImage', uploaded.url);
+    } catch (error) {
+      console.error('Upload user profile image failed', error);
+      window.alert('Tai anh that bai, vui long thu lai.');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
 
   return (
     <form className="form" onSubmit={handleFormSubmit}>
@@ -114,6 +133,8 @@ const UserForm = ({ defaultValues, onSubmit, onCancel, mode = 'create', isSubmit
 
         <FormField label="Anh dai dien" htmlFor="profileImage" error={errors.profileImage?.message}>
           <input id="profileImage" {...register('profileImage')} placeholder="URL anh" />
+          <input type="file" accept="image/*" onChange={handleUpload} disabled={isUploading} />
+          {isUploading && <small className="text-muted">Dang tai anh...</small>}
         </FormField>
       </div>
 
@@ -150,4 +171,3 @@ const UserForm = ({ defaultValues, onSubmit, onCancel, mode = 'create', isSubmit
 };
 
 export default UserForm;
-

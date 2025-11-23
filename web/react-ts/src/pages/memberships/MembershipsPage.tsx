@@ -73,6 +73,16 @@ const MembershipsPage = () => {
   const columns = useMemo(
     () => [
       {
+        key: 'image',
+        title: 'Anh',
+        render: (membership: Membership) =>
+          membership.image ? (
+            <img src={membership.image} alt={membership.title} className="table-image table-image--square" />
+          ) : (
+            '--'
+          ),
+      },
+      {
         key: 'code',
         title: 'Ma',
         render: (membership: Membership) => membership.code,
@@ -181,4 +191,3 @@ const MembershipsPage = () => {
 };
 
 export default MembershipsPage;
-

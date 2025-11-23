@@ -15,6 +15,10 @@ import '../../data/datasources/user_remote_data_source.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/cinema_repository.dart';
 import '../../data/repositories/entertainment_repository.dart';
+import '../../data/datasources/membership_remote_data_source.dart';
+import '../../data/repositories/membership_repository.dart';
+import '../../domain/services/membership_service.dart';
+import '../../presentation/bloc/membership/membership_bloc.dart';
 import '../../data/repositories/movie_repository.dart';
 import '../../data/repositories/product_repository.dart';
 import '../../data/repositories/promotion_repository.dart';
@@ -42,7 +46,11 @@ import '../../presentation/bloc/promotion/promotion_bloc.dart';
 import '../../presentation/bloc/screen/screen_bloc.dart';
 import '../../presentation/bloc/screen_type/screen_type_bloc.dart';
 import '../../presentation/bloc/showtime/showtime_bloc.dart';
+import '../../presentation/bloc/two_factor/two_factor_cubit.dart';
 import '../../presentation/bloc/user/user_bloc.dart';
+import '../../data/datasources/two_factor_remote_data_source.dart';
+import '../../data/repositories/two_factor_repository.dart';
+import '../../domain/services/two_factor_service.dart';
 
 final sl = GetIt.instance;
 
@@ -90,10 +98,12 @@ void _registerDataSources() {
   sl.registerLazySingleton<MovieRemoteDataSource>(() => MovieRemoteDataSource(sl()));
   sl.registerLazySingleton<ProductRemoteDataSource>(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton<PromotionRemoteDataSource>(() => PromotionRemoteDataSource(sl()));
+  sl.registerLazySingleton<MembershipRemoteDataSource>(() => MembershipRemoteDataSource(sl()));
   sl.registerLazySingleton<ScreenRemoteDataSource>(() => ScreenRemoteDataSource(sl()));
   sl.registerLazySingleton<ScreenTypeRemoteDataSource>(() => ScreenTypeRemoteDataSource(sl()));
   sl.registerLazySingleton<ShowtimeRemoteDataSource>(() => ShowtimeRemoteDataSource(sl()));
   sl.registerLazySingleton<UserRemoteDataSource>(() => UserRemoteDataSource(sl()));
+  sl.registerLazySingleton<TwoFactorRemoteDataSource>(() => TwoFactorRemoteDataSource(sl()));
 }
 
 void _registerRepositories() {
@@ -109,10 +119,12 @@ void _registerRepositories() {
   sl.registerLazySingleton<MovieRepository>(() => MovieRepository(sl()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepository(sl()));
   sl.registerLazySingleton<PromotionRepository>(() => PromotionRepository(sl()));
+  sl.registerLazySingleton<MembershipRepository>(() => MembershipRepository(sl()));
   sl.registerLazySingleton<ScreenRepository>(() => ScreenRepository(sl()));
   sl.registerLazySingleton<ScreenTypeRepository>(() => ScreenTypeRepository(sl()));
   sl.registerLazySingleton<ShowtimeRepository>(() => ShowtimeRepository(sl()));
   sl.registerLazySingleton<UserRepository>(() => UserRepository(sl()));
+  sl.registerLazySingleton<TwoFactorRepository>(() => TwoFactorRepository(sl()));
 }
 
 void _registerServices() {
@@ -122,10 +134,12 @@ void _registerServices() {
   sl.registerLazySingleton<MovieService>(() => MovieService(sl()));
   sl.registerLazySingleton<ProductService>(() => ProductService(sl()));
   sl.registerLazySingleton<PromotionService>(() => PromotionService(sl()));
+  sl.registerLazySingleton<MembershipService>(() => MembershipService(sl()));
   sl.registerLazySingleton<ScreenService>(() => ScreenService(sl()));
   sl.registerLazySingleton<ScreenTypeService>(() => ScreenTypeService(sl()));
   sl.registerLazySingleton<ShowtimeService>(() => ShowtimeService(sl()));
   sl.registerLazySingleton<UserService>(() => UserService(sl()));
+  sl.registerLazySingleton<TwoFactorService>(() => TwoFactorService(sl()));
 }
 
 void _registerBlocs() {
@@ -138,6 +152,8 @@ void _registerBlocs() {
   sl.registerFactory<ScreenTypeBloc>(() => ScreenTypeBloc(sl()));
   sl.registerFactory<ShowtimeBloc>(() => ShowtimeBloc(sl()));
   sl.registerFactory<UserBloc>(() => UserBloc(sl()));
+  sl.registerFactory<TwoFactorCubit>(() => TwoFactorCubit(sl()));
+  sl.registerFactory<MembershipBloc>(() => MembershipBloc(sl()));
 }
 
 String _resolveBaseUrl() {

@@ -1,10 +1,551 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model bookings {
+  id_booking     Int              @id @default(autoincrement())
+  id_users       Int?
+  id_member      Int?
+  id_showtime    Int?
+  id_staff       Int?
+  id_promotions  Int?
+  booking_date   DateTime?        @default(now()) @db.DateTime(0)
+  total_amount   Decimal          @db.Decimal(10, 2)
+  payment_status String?          @default("unpaid") @db.VarChar(20)
+  booking_status String?          @default("pending") @db.VarChar(20)
+  booking_code   String?          @unique(map: "UQ_BookingCode") @db.VarChar(20)
+  member         member?          @relation(fields: [id_member], references: [id_member], onDelete: NoAction, onUpdate: NoAction, map: "fk_booking_member")
+  promotion      promotions?      @relation(fields: [id_promotions], references: [id_promotions], onDelete: NoAction, onUpdate: NoAction, map: "fk_bookings_promotion")
+  showtime       showtimes?       @relation(fields: [id_showtime], references: [id_showtime], onDelete: NoAction, onUpdate: NoAction, map: "fk_bookings_showtime")
+  staff          staff?           @relation(fields: [id_staff], references: [id_staff], onDelete: NoAction, onUpdate: NoAction, map: "fk_bookings_staff")
+  user           users?           @relation(fields: [id_users], references: [id_users], onDelete: NoAction, onUpdate: NoAction, map: "fk_bookings_user")
+  details        detail_booking[]
+  order_products order_product[]
+  payments       payments[]
+  tickets        ticket[]
+
+  @@index([id_users], map: "fk_bookings_user")
+  @@index([id_showtime], map: "fk_bookings_showtime")
+  @@index([id_staff], map: "fk_bookings_staff")
+  @@index([id_promotions], map: "fk_bookings_promotion")
+  @@index([id_member], map: "fk_booking_member")
+}
+
+model cinemas {
+  id_cinema       Int               @id @default(autoincrement())
+  cinema_name     String            @db.VarChar(100)
+  address         String            @db.VarChar(255)
+  city            String            @db.VarChar(50)
+  description     String?           @db.Text
+  image           String?           @db.VarChar(255)
+  contact_number  String?           @db.VarChar(20)
+  email           String?           @db.VarChar(100)
+  status          String?           @default("active") @db.VarChar(20)
+  entertainments  entertainment[]
+  operation_hours operation_hours[]
+  screens         screen[]
+}
+
+model contact {
+  id_contact   Int       @id @default(autoincrement())
+  id_staff     Int?
+  name         String    @db.VarChar(100)
+  email        String    @db.VarChar(100)
+  subject      String    @db.VarChar(255)
+  message      String    @db.Text
+  contact_date DateTime? @default(now()) @db.DateTime(0)
+  status       String?   @default("unread") @db.VarChar(20)
+  reply        String?   @db.Text
+  reply_date   DateTime? @db.DateTime(0)
+  staff        staff?    @relation(fields: [id_staff], references: [id_staff], onDelete: NoAction, onUpdate: NoAction, map: "fk_contact_staff")
+
+  @@index([id_staff], map: "fk_contact_staff")
+}
+
+model detail_booking {
+  id_booking    Int
+  id_seats      Int
+  price         Decimal      @db.Decimal(10, 2)
+  id_tickettype Int?
+  booking       bookings     @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, onUpdate: NoAction, map: "fk_detailbooking_booking")
+  seat          seat         @relation(fields: [id_seats], references: [id_seats], onDelete: NoAction, onUpdate: NoAction, map: "fk_detailbooking_seat")
+  ticket_type   ticket_type? @relation(fields: [id_tickettype], references: [id_tickettype], onDelete: NoAction, onUpdate: NoAction, map: "fk_detailbooking_tickettype")
+
+  @@id([id_booking, id_seats])
+  @@index([id_seats], map: "fk_detailbooking_seat")
+  @@index([id_tickettype], map: "fk_detailbooking_tickettype")
+}
+
+model entertainment {
+  id_entertainment Int       @id @default(autoincrement())
+  id_cinema        Int?
+  title            String    @db.VarChar(255)
+  description      String?   @db.Text
+  image_url        String?   @db.VarChar(255)
+  start_date       DateTime  @db.DateTime(0)
+  end_date         DateTime? @db.DateTime(0)
+  status           String?   @default("active") @db.VarChar(20)
+  views_count      Int?      @default(0)
+  featured         Boolean?  @default(false)
+  id_staff         Int?
+  cinema           cinemas?  @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, onUpdate: NoAction, map: "fk_entertainment_cinema")
+  staff            staff?    @relation(fields: [id_staff], references: [id_staff], onUpdate: NoAction, map: "fk_entertainment_staff")
+
+  @@index([id_cinema], map: "fk_entertainment_cinema")
+  @@index([id_staff], map: "fk_entertainment_staff")
+}
+
+model genre {
+  id_genre     Int            @id @default(autoincrement())
+  genre_name   String         @unique(map: "UQ_GenreName") @db.VarChar(50)
+  description  String?        @db.VarChar(255)
+  genre_movies genre_movies[]
+}
+
+model genre_movies {
+  id_genre Int
+  id_movie Int
+  genre    genre  @relation(fields: [id_genre], references: [id_genre], onDelete: Cascade, onUpdate: NoAction, map: "fk_genremovies_genre")
+  movie    movies @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, onUpdate: NoAction, map: "fk_genremovies_movie")
+
+  @@id([id_genre, id_movie])
+  @@index([id_movie], map: "fk_genremovies_movie")
+}
+
+model homepage_banners {
+  id_banner     Int       @id @default(autoincrement())
+  id_movie      Int
+  title         String    @db.VarChar(255)
+  description   String?   @db.Text
+  display_order Int       @default(1)
+  is_active     Boolean   @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamp(0)
+  updated_at    DateTime? @default(now()) @updatedAt @db.Timestamp(0)
+  movie         movies    @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, onUpdate: NoAction, map: "homepage_banners_ibfk_1")
+
+  @@unique([id_movie, is_active], map: "unique_active_movie")
+  @@index([display_order], map: "idx_display_order")
+  @@index([is_active], map: "idx_is_active")
+  @@index([id_movie], map: "idx_movie_id")
+}
+
+model member {
+  id_member     Int             @id @default(autoincrement())
+  id_user       Int             @unique(map: "UQ_MemberUser")
+  id_typemember Int
+  id_membership Int?
+  points        Int?            @default(0)
+  join_date     DateTime?       @db.Date
+  status        ActiveInactive? @default(active)
+  created_at    DateTime?       @default(now()) @db.DateTime(0)
+  updated_at    DateTime?       @default(now()) @updatedAt @db.DateTime(0)
+  bookings      bookings[]
+  membership    membership?     @relation(fields: [id_membership], references: [id_membership], onDelete: NoAction, onUpdate: NoAction, map: "fk_member_membership")
+  type_member   type_member     @relation(fields: [id_typemember], references: [id_typemember], onDelete: NoAction, onUpdate: NoAction, map: "fk_member_typemember")
+  user          users           @relation(fields: [id_user], references: [id_users], onDelete: Cascade, onUpdate: NoAction, map: "fk_member_user")
+
+  @@index([id_typemember], map: "fk_member_typemember")
+  @@index([id_membership], map: "fk_member_membership")
+}
+
+model membership {
+  id_membership Int             @id @default(autoincrement())
+  code          String          @unique(map: "UQ_MembershipCode") @db.VarChar(50)
+  title         String          @db.VarChar(100)
+  image         String?         @db.VarChar(255)
+  link          String?         @db.VarChar(255)
+  description   String?         @db.Text
+  benefits      String?         @db.Text
+  criteria      String?         @db.Text
+  status        ActiveInactive? @default(active)
+  members       member[]
+}
+
+model movies {
+  id_movie         Int                @id @default(autoincrement())
+  title            String             @db.VarChar(255)
+  original_title   String?            @db.VarChar(255)
+  director         String?            @db.VarChar(100)
+  actors           String?            @db.Text
+  duration         Int
+  release_date     DateTime           @db.Date
+  end_date         DateTime?          @db.Date
+  language         String?            @db.VarChar(50)
+  subtitle         String?            @db.VarChar(50)
+  country          String?            @db.VarChar(50)
+  description      String?            @db.Text
+  poster_image     String?            @db.VarChar(255)
+  banner_image     String?            @db.VarChar(255)
+  trailer_url      String?            @db.VarChar(255)
+  age_restriction  String?            @db.VarChar(10)
+  status           MovieStatus?       @default(coming_soon)
+  genre_movies     genre_movies[]
+  homepage_banners homepage_banners[]
+  news             news[]
+  reviews          review[]
+  showtimes        showtimes[]
+}
+
+model news {
+  id_new         Int       @id @default(autoincrement())
+  id_staff       Int?
+  id_movie       Int?
+  title          String    @db.VarChar(255)
+  content        String    @db.Text
+  image_url      String?   @db.VarChar(255)
+  published_date DateTime? @default(now()) @db.DateTime(0)
+  status         String?   @default("active") @db.VarChar(20)
+  views_count    Int?      @default(0)
+  featured       Boolean?  @default(false)
+  movie          movies?   @relation(fields: [id_movie], references: [id_movie], onDelete: NoAction, onUpdate: NoAction, map: "fk_news_movie")
+  staff          staff?    @relation(fields: [id_staff], references: [id_staff], onDelete: NoAction, onUpdate: NoAction, map: "fk_news_staff")
+
+  @@index([id_staff], map: "fk_news_staff")
+  @@index([id_movie], map: "fk_news_movie")
+}
+
+model operation_hours {
+  id_operation Int      @id @default(autoincrement())
+  id_cinema    Int?
+  day_of_week  Int      @db.TinyInt
+  opening_time DateTime @db.Time(0)
+  closing_time DateTime @db.Time(0)
+  is_holiday   Boolean? @default(false)
+  special_note String?  @db.VarChar(255)
+  cinema       cinemas? @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, onUpdate: NoAction, map: "fk_operation_cinema")
+
+  @@unique([id_cinema, day_of_week], map: "UQ_CinemaDay")
+}
+
+model order_product {
+  id_orderproduct Int       @id @default(autoincrement())
+  id_booking      Int?
+  id_product      Int?
+  id_staff        Int?
+  quantity        Int
+  price           Decimal   @db.Decimal(10, 2)
+  order_status    String?   @default("pending") @db.VarChar(20)
+  booking         bookings? @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, onUpdate: NoAction, map: "fk_orderproduct_booking")
+  product         product?  @relation(fields: [id_product], references: [id_product], onDelete: NoAction, onUpdate: NoAction, map: "fk_orderproduct_product")
+  staff           staff?    @relation(fields: [id_staff], references: [id_staff], onDelete: NoAction, onUpdate: NoAction, map: "fk_orderproduct_staff")
+
+  @@index([id_booking], map: "fk_orderproduct_booking")
+  @@index([id_product], map: "fk_orderproduct_product")
+  @@index([id_staff], map: "fk_orderproduct_staff")
+}
+
+model payment_methods {
+  id_payment_method Int        @id @default(autoincrement())
+  method_code       String     @unique(map: "UQ_MethodCode") @db.VarChar(20)
+  method_name       String     @db.VarChar(100)
+  description       String?    @db.Text
+  icon_url          String?    @db.VarChar(255)
+  is_active         Boolean?   @default(true)
+  processing_fee    Decimal?   @default(0.00) @db.Decimal(10, 2)
+  min_amount        Decimal?   @default(0.00) @db.Decimal(10, 2)
+  max_amount        Decimal?   @db.Decimal(10, 2)
+  display_order     Int?       @default(0)
+  created_at        DateTime?  @default(now()) @db.DateTime(0)
+  updated_at        DateTime?  @default(now()) @updatedAt @db.DateTime(0)
+  payments          payments[] @relation("PaymentMethodPayments")
+}
+
+model payments {
+  id_payment        Int              @id @default(autoincrement())
+  id_booking        Int?
+  id_payment_method Int?
+  payment_method    String           @db.VarChar(50)
+  payment_date      DateTime?        @default(now()) @db.DateTime(0)
+  amount            Decimal          @db.Decimal(10, 2)
+  transaction_id    String?          @unique(map: "UQ_TransactionID") @db.VarChar(100)
+  status            String?          @default("pending") @db.VarChar(20)
+  payment_details   String?          @db.Text
+  booking           bookings?        @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_booking")
+  method            payment_methods? @relation("PaymentMethodPayments", fields: [id_payment_method], references: [id_payment_method], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_method")
+
+  @@index([id_booking], map: "fk_payment_booking")
+  @@index([id_payment_method], map: "fk_payment_method")
+}
+
+model product {
+  id_product     Int             @id @default(autoincrement())
+  id_typeproduct Int?
+  product_name   String          @db.VarChar(100)
+  description    String?         @db.VarChar(255)
+  price          Decimal         @db.Decimal(10, 2)
+  image          String?         @db.VarChar(255)
+  status         String?         @default("available") @db.VarChar(20)
+  quantity       Int             @default(0)
+  order_products order_product[]
+  type_product   type_product?   @relation(fields: [id_typeproduct], references: [id_typeproduct], onDelete: NoAction, onUpdate: NoAction, map: "fk_product_type")
+
+  @@index([id_typeproduct], map: "fk_product_type")
+}
+
+model promotions {
+  id_promotions    Int        @id @default(autoincrement())
+  promotion_code   String     @unique(map: "UQ_PromotionCode") @db.VarChar(20)
+  title            String     @db.VarChar(100)
+  description      String?    @db.Text
+  discount_percent Decimal?   @default(0.00) @db.Decimal(5, 2)
+  discount_amount  Decimal?   @default(0.00) @db.Decimal(10, 2)
+  start_date       DateTime   @db.DateTime(0)
+  end_date         DateTime?  @db.DateTime(0)
+  min_purchase     Decimal?   @default(0.00) @db.Decimal(10, 2)
+  max_discount     Decimal?   @db.Decimal(10, 2)
+  usage_limit      Int?
+  status           String?    @default("active") @db.VarChar(20)
+  bookings         bookings[]
+}
+
+model review {
+  id_users    Int
+  id_movie    Int
+  rating      Int       @db.TinyInt
+  comment     String?   @db.Text
+  review_date DateTime? @default(now()) @db.DateTime(0)
+  is_approved Boolean?  @default(false)
+  likes_count Int?      @default(0)
+  movie       movies    @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, onUpdate: NoAction, map: "fk_review_movie")
+  user        users     @relation(fields: [id_users], references: [id_users], onDelete: Cascade, onUpdate: NoAction, map: "fk_review_user")
+
+  @@id([id_users, id_movie])
+  @@index([id_movie], map: "fk_review_movie")
+}
+
+model screen {
+  id_screen     Int          @id @default(autoincrement())
+  id_cinema     Int?
+  screen_name   String       @db.VarChar(50)
+  capacity      Int
+  status        String?      @default("active") @db.VarChar(20)
+  id_screentype Int?
+  cinema        cinemas?     @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, onUpdate: NoAction, map: "fk_screen_cinema")
+  screen_type   screen_type? @relation(fields: [id_screentype], references: [id_screentype], onDelete: NoAction, onUpdate: NoAction, map: "fk_screen_type")
+  seats         seat[]
+  showtimes     showtimes[]
+
+  @@unique([id_cinema, screen_name], map: "UQ_CinemaScreen")
+  @@index([id_screentype], map: "fk_screen_type")
+}
+
+model screen_type {
+  id_screentype          Int      @id @default(autoincrement())
+  type_name              String   @unique(map: "UQ_ScreenTypeName") @db.VarChar(50)
+  description            String?  @db.Text
+  base_price_multiplier  Decimal  @default(1.00) @db.Decimal(3, 2)
+  technology_description String?  @db.VarChar(255)
+  icon_url               String?  @db.VarChar(255)
+  status                 String?  @default("active") @db.VarChar(20)
+  screens                screen[]
+}
+
+model seat {
+  id_seats        Int              @id @default(autoincrement())
+  id_screen       Int?
+  id_seattype     Int?
+  seat_row        String           @db.Char(2)
+  seat_number     Int
+  status          String?          @default("active") @db.VarChar(20)
+  detail_bookings detail_booking[]
+  screen          screen?          @relation(fields: [id_screen], references: [id_screen], onDelete: Cascade, onUpdate: NoAction, map: "fk_seat_screen")
+  seat_type       seat_type?       @relation(fields: [id_seattype], references: [id_seattype], onDelete: NoAction, onUpdate: NoAction, map: "fk_seat_type")
+  seat_locks      seat_locks[]
+  tickets         ticket[]
+
+  @@unique([id_screen, seat_row, seat_number], map: "UQ_ScreenSeat")
+  @@index([id_seattype], map: "fk_seat_type")
+}
+
+model seat_locks {
+  id_lock     Int       @id @default(autoincrement())
+  id_showtime Int
+  id_seats    Int
+  session_id  String    @db.VarChar(100)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  expires_at  DateTime  @db.DateTime(0)
+  seat        seat      @relation(fields: [id_seats], references: [id_seats], onDelete: Cascade, onUpdate: NoAction, map: "FK_SeatLock_Seat")
+  showtime    showtimes @relation(fields: [id_showtime], references: [id_showtime], onDelete: Cascade, onUpdate: NoAction, map: "FK_SeatLock_Showtime")
+
+  @@unique([id_showtime, id_seats], map: "UQ_ShowtimeSeat")
+  @@index([id_seats], map: "FK_SeatLock_Seat")
+  @@index([id_showtime], map: "FK_SeatLock_Showtime")
+}
+
+model seat_type {
+  id_seattype        Int                      @id @default(autoincrement())
+  type_name          String                   @unique(map: "UQ_SeatTypeName") @db.VarChar(50)
+  price_multiplier   Decimal                  @default(1.00) @db.Decimal(3, 2)
+  description        String?                  @db.VarChar(255)
+  icon_url           String?                  @db.VarChar(255)
+  seats              seat[]
+  ticket_constraints ticket_seat_constraint[]
+}
+
+model showtimes {
+  id_showtime Int          @id @default(autoincrement())
+  id_movie    Int?
+  id_screen   Int?
+  start_time  DateTime     @db.Time(0)
+  end_time    DateTime     @db.Time(0)
+  show_date   DateTime     @db.Date
+  format      String?      @default("2D") @db.VarChar(10)
+  language    String?      @db.VarChar(50)
+  subtitle    String?      @db.VarChar(50)
+  status      String?      @default("available") @db.VarChar(20)
+  price       Decimal      @default(0.00) @db.Decimal(10, 2)
+  bookings    bookings[]
+  seat_locks  seat_locks[]
+  movie       movies?      @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, onUpdate: NoAction, map: "fk_showtimes_movie")
+  screen      screen?      @relation(fields: [id_screen], references: [id_screen], onDelete: Cascade, onUpdate: NoAction, map: "fk_showtimes_screen")
+
+  @@unique([id_screen, show_date, start_time], map: "UQ_Showtime")
+  @@index([id_movie], map: "fk_showtimes_movie")
+}
+
+model staff {
+  id_staff       Int             @id @default(autoincrement())
+  id_typestaff   Int?
+  staff_name     String          @db.VarChar(100)
+  email          String          @unique(map: "UQ_StaffEmail") @db.VarChar(100)
+  password_hash  String          @db.VarChar(255)
+  phone_number   String?         @db.VarChar(20)
+  address        String?         @db.VarChar(255)
+  date_of_birth  DateTime?       @db.Date
+  hire_date      DateTime?       @default(dbgenerated("(curdate())")) @db.Date
+  status         String?         @default("active") @db.VarChar(20)
+  profile_image  String?         @db.VarChar(255)
+  bookings       bookings[]
+  contacts       contact[]
+  entertainments entertainment[]
+  news           news[]
+  order_products order_product[]
+  type_staff     type_staff?     @relation(fields: [id_typestaff], references: [id_typestaff], onDelete: NoAction, onUpdate: NoAction, map: "fk_staff_type")
+
+  @@index([id_typestaff], map: "fk_staff_type")
+}
+
+model ticket {
+  id_ticket     Int         @id @default(autoincrement())
+  id_booking    Int
+  id_seats      Int
+  id_tickettype Int
+  ticket_code   String?     @unique(map: "UQ_TicketCode") @db.VarChar(20)
+  price         Decimal     @db.Decimal(10, 2)
+  status        String?     @default("valid") @db.VarChar(20)
+  booking       bookings    @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticket_booking")
+  seat          seat        @relation(fields: [id_seats], references: [id_seats], onDelete: NoAction, onUpdate: NoAction, map: "fk_ticket_seat")
+  ticket_type   ticket_type @relation(fields: [id_tickettype], references: [id_tickettype], onDelete: NoAction, onUpdate: NoAction, map: "fk_ticket_type")
+
+  @@index([id_booking], map: "fk_ticket_booking")
+  @@index([id_seats], map: "fk_ticket_seat")
+  @@index([id_tickettype], map: "fk_ticket_type")
+}
+
+model ticket_seat_constraint {
+  id_tickettype Int
+  id_seattype   Int
+  seat_type     seat_type   @relation(fields: [id_seattype], references: [id_seattype], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticketseat_seat")
+  ticket_type   ticket_type @relation(fields: [id_tickettype], references: [id_tickettype], onDelete: Cascade, onUpdate: NoAction, map: "fk_ticketseat_ticket")
+
+  @@id([id_tickettype, id_seattype])
+  @@index([id_seattype], map: "fk_ticketseat_seat")
+}
+
+model ticket_type {
+  id_tickettype    Int                      @id @default(autoincrement())
+  type_name        String                   @unique(map: "UQ_TicketTypeName") @db.VarChar(50)
+  description      String?                  @db.VarChar(255)
+  price_multiplier Decimal                  @default(1.00) @db.Decimal(3, 2)
+  age_min          Int?
+  age_max          Int?
+  required_id      Boolean?                 @default(false)
+  icon_url         String?                  @db.VarChar(255)
+  status           String?                  @default("active") @db.VarChar(20)
+  fixed_price      Decimal?                 @db.Decimal(10, 2)
+  detail_bookings  detail_booking[]
+  tickets          ticket[]
+  seat_constraints ticket_seat_constraint[]
+}
+
+model type_member {
+  id_typemember Int      @id @default(autoincrement())
+  type_name     String   @unique(map: "UQ_TypeMemberName") @db.VarChar(50)
+  description   String?  @db.VarChar(255)
+  priority      Int?     @default(1)
+  members       member[]
+}
+
+model type_product {
+  id_typeproduct Int       @id @default(autoincrement())
+  type_name      String    @unique(map: "UQ_ProductTypeName") @db.VarChar(50)
+  description    String?   @db.VarChar(255)
+  image          String?   @db.VarChar(255)
+  products       product[]
+}
+
+model type_staff {
+  id_typestaff     Int     @id @default(autoincrement())
+  type_name        String  @unique(map: "UQ_StaffTypeName") @db.VarChar(50)
+  description      String? @db.VarChar(255)
+  permission_level Int     @default(1)
+  staff            staff[]
+}
+
+model user_logs {
+  id_userlog      Int       @id @default(autoincrement())
+  id_users        Int?
+  action_type     String    @db.VarChar(50)
+  action_time     DateTime? @default(now()) @db.DateTime(0)
+  ip_address      String?   @db.VarChar(45)
+  device_info     String?   @db.VarChar(255)
+  additional_info String?   @db.Text
+  user            users?    @relation(fields: [id_users], references: [id_users], onDelete: Cascade, onUpdate: NoAction, map: "fk_userlog_user")
+
+  @@index([id_users], map: "fk_userlog_user")
+}
+
+model users {
+  id_users               Int                 @id @default(autoincrement())
+  username               String              @unique(map: "UQ_Username") @db.VarChar(50)
+  email                  String              @unique(map: "UQ_UserEmail") @db.VarChar(100)
+  password_hash          String              @db.VarChar(255)
+  full_name              String              @db.VarChar(100)
+  phone_number           String?             @db.VarChar(20)
+  date_of_birth          DateTime?           @db.Date
+  gender                 String?             @db.VarChar(10)
+  address                String?             @db.VarChar(255)
+  profile_image          String?             @db.VarChar(255)
+  created_at             DateTime?           @default(now()) @db.DateTime(0)
+  updated_at             DateTime?           @default(now()) @updatedAt @db.DateTime(0)
+  role                   String?             @default("user") @db.VarChar(20)
+  status                 String?             @default("active") @db.VarChar(20)
+  reset_token            String?             @db.VarChar(255)
+  reset_token_expiry     DateTime?           @db.DateTime(0)
+  two_factor_secret      String?             @db.VarChar(255)
+  two_factor_enabled     Boolean?            @default(false)
+  two_factor_verified_at DateTime?           @db.DateTime(0)
+  bookings               bookings[]
+  member                 member?
+  reviews                review[]
+  user_backup_codes      user_backup_codes[]
+  user_logs              user_logs[]
+}
+
+model user_backup_codes {
+  id         Int       @id @default(autoincrement())
+  id_users   Int
+  code       String    @db.VarChar(255)
+  used       Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  users      users     @relation(fields: [id_users], references: [id_users], onDelete: Cascade, onUpdate: NoAction, map: "user_backup_codes_ibfk_1")
+
+  @@index([id_users], map: "id_users")
 }
 
 enum ActiveInactive {
@@ -16,596 +557,4 @@ enum MovieStatus {
   coming_soon @map("coming soon")
   now_showing @map("now showing")
   expired
-}
-
-model bookings {
-  id_booking     Int      @id @default(autoincrement())
-  id_users       Int?
-  id_member      Int?
-  id_showtime    Int?
-  id_staff       Int?
-  id_promotions  Int?
-  booking_date   DateTime @default(now()) @db.DateTime(0)
-  total_amount   Decimal  @db.Decimal(10, 2)
-  payment_status String   @default("unpaid") @db.VarChar(20)
-  booking_status String   @default("pending") @db.VarChar(20)
-  booking_code   String?  @db.VarChar(20)
-
-  user           users?       @relation(fields: [id_users], references: [id_users], map: "fk_bookings_user")
-  member         member?      @relation(fields: [id_member], references: [id_member], map: "fk_booking_member")
-  showtime       showtimes?   @relation(fields: [id_showtime], references: [id_showtime], map: "fk_bookings_showtime")
-  staff          staff?       @relation(fields: [id_staff], references: [id_staff], map: "fk_bookings_staff")
-  promotion      promotions?  @relation(fields: [id_promotions], references: [id_promotions], map: "fk_bookings_promotion")
-  details        detail_booking[]
-  tickets        ticket[]
-  payments       payments[]
-  order_products order_product[]
-
-  @@unique([booking_code], map: "UQ_BookingCode")
-  @@index([id_users], map: "fk_bookings_user")
-  @@index([id_showtime], map: "fk_bookings_showtime")
-  @@index([id_staff], map: "fk_bookings_staff")
-  @@index([id_promotions], map: "fk_bookings_promotion")
-  @@index([id_member], map: "fk_booking_member")
-}
-
-model cinemas {
-  id_cinema      Int      @id @default(autoincrement())
-  cinema_name    String   @db.VarChar(100)
-  address        String   @db.VarChar(255)
-  city           String   @db.VarChar(50)
-  description    String?  @db.Text
-  image          String?  @db.VarChar(255)
-  contact_number String?  @db.VarChar(20)
-  email          String?  @db.VarChar(100)
-  status         String   @default("active") @db.VarChar(20)
-
-  screens         screen[]
-  operation_hours operation_hours[]
-  entertainments  entertainment[]
-}
-
-model contact {
-  id_contact   Int      @id @default(autoincrement())
-  id_staff     Int?
-  name         String   @db.VarChar(100)
-  email        String   @db.VarChar(100)
-  subject      String   @db.VarChar(255)
-  message      String   @db.Text
-  contact_date DateTime @default(now()) @db.DateTime(0)
-  status       String   @default("unread") @db.VarChar(20)
-  reply        String?  @db.Text
-  reply_date   DateTime? @db.DateTime(0)
-
-  staff staff? @relation(fields: [id_staff], references: [id_staff], map: "fk_contact_staff")
-
-  @@index([id_staff], map: "fk_contact_staff")
-}
-
-model detail_booking {
-  id_booking    Int
-  id_seats      Int
-  price         Decimal   @db.Decimal(10, 2)
-  id_tickettype Int?
-
-  booking     bookings     @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, map: "fk_detailbooking_booking")
-  seat        seat         @relation(fields: [id_seats], references: [id_seats], map: "fk_detailbooking_seat")
-  ticket_type ticket_type? @relation(fields: [id_tickettype], references: [id_tickettype], map: "fk_detailbooking_tickettype")
-
-  @@id([id_booking, id_seats])
-  @@index([id_seats], map: "fk_detailbooking_seat")
-  @@index([id_tickettype], map: "fk_detailbooking_tickettype")
-}
-
-model entertainment {
-  id_entertainment Int      @id @default(autoincrement())
-  id_cinema        Int?
-  title            String   @db.VarChar(255)
-  description      String?  @db.Text
-  image_url        String?  @db.VarChar(255)
-  start_date       DateTime @db.DateTime(0)
-  end_date         DateTime? @db.DateTime(0)
-  status           String   @default("active") @db.VarChar(20)
-  views_count      Int      @default(0)
-  featured         Boolean  @default(false)
-  id_staff         Int?
-
-  cinema cinemas? @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, map: "fk_entertainment_cinema")
-  staff  staff?   @relation(fields: [id_staff], references: [id_staff], onDelete: SetNull, map: "fk_entertainment_staff")
-
-  @@index([id_cinema], map: "fk_entertainment_cinema")
-  @@index([id_staff], map: "fk_entertainment_staff")
-}
-
-model genre {
-  id_genre    Int     @id @default(autoincrement())
-  genre_name  String  @db.VarChar(50)
-  description String? @db.VarChar(255)
-
-  genre_movies genre_movies[]
-
-  @@unique([genre_name], map: "UQ_GenreName")
-}
-
-model genre_movies {
-  id_genre Int
-  id_movie Int
-
-  genre genre   @relation(fields: [id_genre], references: [id_genre], onDelete: Cascade, map: "fk_genremovies_genre")
-  movie movies  @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, map: "fk_genremovies_movie")
-
-  @@id([id_genre, id_movie])
-  @@index([id_movie], map: "fk_genremovies_movie")
-}
-
-model homepage_banners {
-  id_banner     Int      @id @default(autoincrement())
-  id_movie      Int
-  title         String   @db.VarChar(255)
-  description   String?  @db.Text
-  display_order Int      @default(1)
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now()) @db.Timestamp(0)
-  updated_at    DateTime @default(now()) @updatedAt @db.Timestamp(0)
-
-  movie movies @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, map: "homepage_banners_ibfk_1")
-
-  @@unique([id_movie, is_active], map: "unique_active_movie")
-  @@index([display_order], map: "idx_display_order")
-  @@index([is_active], map: "idx_is_active")
-  @@index([id_movie], map: "idx_movie_id")
-}
-
-model member {
-  id_member     Int             @id @default(autoincrement())
-  id_user       Int
-  id_typemember Int
-  id_membership Int?
-  points        Int             @default(0)
-  join_date     DateTime?       @db.Date
-  status        ActiveInactive  @default(active)
-  created_at    DateTime        @default(now()) @db.DateTime(0)
-  updated_at    DateTime        @default(now()) @updatedAt @db.DateTime(0)
-
-  user        users        @relation(fields: [id_user], references: [id_users], onDelete: Cascade, map: "fk_member_user")
-  type_member type_member  @relation(fields: [id_typemember], references: [id_typemember], map: "fk_member_typemember")
-  membership  membership?  @relation(fields: [id_membership], references: [id_membership], map: "fk_member_membership")
-  bookings    bookings[]
-
-  @@unique([id_user], map: "UQ_MemberUser")
-  @@index([id_typemember], map: "fk_member_typemember")
-  @@index([id_membership], map: "fk_member_membership")
-}
-
-model membership {
-  id_membership Int            @id @default(autoincrement())
-  code          String         @db.VarChar(50)
-  title         String         @db.VarChar(100)
-  image         String?        @db.VarChar(255)
-  link          String?        @db.VarChar(255)
-  description   String?        @db.Text
-  benefits      String?        @db.Text
-  criteria      String?        @db.Text
-  status        ActiveInactive @default(active)
-
-  members member[]
-
-  @@unique([code], map: "UQ_MembershipCode")
-}
-
-model movies {
-  id_movie        Int          @id @default(autoincrement())
-  title           String       @db.VarChar(255)
-  original_title  String?      @db.VarChar(255)
-  director        String?      @db.VarChar(100)
-  actors          String?      @db.Text
-  duration        Int
-  release_date    DateTime     @db.Date
-  end_date        DateTime?    @db.Date
-  language        String?      @db.VarChar(50)
-  subtitle        String?      @db.VarChar(50)
-  country         String?      @db.VarChar(50)
-  description     String?      @db.Text
-  poster_image    String?      @db.VarChar(255)
-  banner_image    String?      @db.VarChar(255)
-  trailer_url     String?      @db.VarChar(255)
-  age_restriction String?      @db.VarChar(10)
-  status          MovieStatus  @default(coming_soon)
-
-  showtimes         showtimes[]
-  genre_movies      genre_movies[]
-  homepage_banners  homepage_banners[]
-  news              news[]
-  reviews           review[]
-}
-
-model news {
-  id_new         Int      @id @default(autoincrement())
-  id_staff       Int?
-  id_movie       Int?
-  title          String   @db.VarChar(255)
-  content        String   @db.Text
-  image_url      String?  @db.VarChar(255)
-  published_date DateTime @default(now()) @db.DateTime(0)
-  status         String   @default("active") @db.VarChar(20)
-  views_count    Int      @default(0)
-  featured       Boolean  @default(false)
-
-  staff staff?   @relation(fields: [id_staff], references: [id_staff], map: "fk_news_staff")
-  movie movies?  @relation(fields: [id_movie], references: [id_movie], map: "fk_news_movie")
-
-  @@index([id_staff], map: "fk_news_staff")
-  @@index([id_movie], map: "fk_news_movie")
-}
-
-model operation_hours {
-  id_operation Int      @id @default(autoincrement())
-  id_cinema    Int?
-  day_of_week  Int
-  opening_time DateTime @db.Time(0)
-  closing_time DateTime @db.Time(0)
-  is_holiday   Boolean  @default(false)
-  special_note String?  @db.VarChar(255)
-
-  cinema cinemas? @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, map: "fk_operation_cinema")
-
-  @@unique([id_cinema, day_of_week], map: "UQ_CinemaDay")
-  @@index([id_cinema], map: "fk_operation_cinema")
-}
-
-model order_product {
-  id_orderproduct Int      @id @default(autoincrement())
-  id_booking      Int?
-  id_product      Int?
-  id_staff        Int?
-  quantity        Int
-  price           Decimal  @db.Decimal(10, 2)
-  order_status    String   @default("pending") @db.VarChar(20)
-
-  booking bookings? @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, map: "fk_orderproduct_booking")
-  product product?  @relation(fields: [id_product], references: [id_product], map: "fk_orderproduct_product")
-  staff   staff?    @relation(fields: [id_staff], references: [id_staff], map: "fk_orderproduct_staff")
-
-  @@index([id_booking], map: "fk_orderproduct_booking")
-  @@index([id_product], map: "fk_orderproduct_product")
-  @@index([id_staff], map: "fk_orderproduct_staff")
-}
-
-model payment_methods {
-  id_payment_method Int      @id @default(autoincrement())
-  method_code       String   @db.VarChar(20)
-  method_name       String   @db.VarChar(100)
-  description       String?  @db.Text
-  icon_url          String?  @db.VarChar(255)
-  is_active         Boolean  @default(true)
-  processing_fee    Decimal  @default(0) @db.Decimal(10, 2)
-  min_amount        Decimal  @default(0) @db.Decimal(10, 2)
-  max_amount        Decimal? @db.Decimal(10, 2)
-  display_order     Int      @default(0)
-  created_at        DateTime @default(now()) @db.DateTime(0)
-  updated_at        DateTime @default(now()) @updatedAt @db.DateTime(0)
-
-  payments payments[] @relation("PaymentMethodPayments")
-
-  @@unique([method_code], map: "UQ_MethodCode")
-}
-
-model payments {
-  id_payment        Int      @id @default(autoincrement())
-  id_booking        Int?
-  id_payment_method Int?
-  payment_method    String   @db.VarChar(50)
-  payment_date      DateTime @default(now()) @db.DateTime(0)
-  amount            Decimal  @db.Decimal(10, 2)
-  transaction_id    String?  @db.VarChar(100)
-  status            String   @default("pending") @db.VarChar(20)
-  payment_details   String?  @db.Text
-
-  booking bookings?            @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, map: "fk_payment_booking")
-  method  payment_methods?     @relation("PaymentMethodPayments", fields: [id_payment_method], references: [id_payment_method], map: "fk_payment_method")
-
-  @@unique([transaction_id], map: "UQ_TransactionID")
-  @@index([id_booking], map: "fk_payment_booking")
-  @@index([id_payment_method], map: "fk_payment_method")
-}
-
-model product {
-  id_product     Int      @id @default(autoincrement())
-  id_typeproduct Int?
-  product_name   String   @db.VarChar(100)
-  description    String?  @db.VarChar(255)
-  price          Decimal  @db.Decimal(10, 2)
-  image          String?  @db.VarChar(255)
-  status         String   @default("available") @db.VarChar(20)
-  quantity       Int      @default(0)
-
-  type_product   type_product? @relation(fields: [id_typeproduct], references: [id_typeproduct], map: "fk_product_type")
-  order_products order_product[]
-
-  @@index([id_typeproduct], map: "fk_product_type")
-}
-
-model promotions {
-  id_promotions    Int      @id @default(autoincrement())
-  promotion_code   String   @db.VarChar(20)
-  title            String   @db.VarChar(100)
-  description      String?  @db.Text
-  discount_percent Decimal  @default(0) @db.Decimal(5, 2)
-  discount_amount  Decimal  @default(0) @db.Decimal(10, 2)
-  start_date       DateTime @db.DateTime(0)
-  end_date         DateTime? @db.DateTime(0)
-  min_purchase     Decimal  @default(0) @db.Decimal(10, 2)
-  max_discount     Decimal? @db.Decimal(10, 2)
-  usage_limit      Int?
-  status           String   @default("active") @db.VarChar(20)
-
-  bookings bookings[]
-
-  @@unique([promotion_code], map: "UQ_PromotionCode")
-}
-
-model review {
-  id_users    Int
-  id_movie    Int
-  rating      Int
-  comment     String?  @db.Text
-  review_date DateTime @default(now()) @db.DateTime(0)
-  is_approved Boolean  @default(false)
-  likes_count Int      @default(0)
-
-  user  users  @relation(fields: [id_users], references: [id_users], onDelete: Cascade, map: "fk_review_user")
-  movie movies @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, map: "fk_review_movie")
-
-  @@id([id_users, id_movie])
-  @@index([id_movie], map: "fk_review_movie")
-}
-
-model screen {
-  id_screen    Int      @id @default(autoincrement())
-  id_cinema    Int?
-  screen_name  String   @db.VarChar(50)
-  capacity     Int
-  status       String   @default("active") @db.VarChar(20)
-  id_screentype Int?
-
-  cinema      cinemas?    @relation(fields: [id_cinema], references: [id_cinema], onDelete: Cascade, map: "fk_screen_cinema")
-  screen_type screen_type? @relation(fields: [id_screentype], references: [id_screentype], map: "fk_screen_type")
-  seats       seat[]
-  showtimes   showtimes[]
-
-  @@unique([id_cinema, screen_name], map: "UQ_CinemaScreen")
-  @@index([id_cinema], map: "fk_screen_cinema")
-  @@index([id_screentype], map: "fk_screen_type")
-}
-
-model screen_type {
-  id_screentype          Int      @id @default(autoincrement())
-  type_name              String   @db.VarChar(50)
-  description            String?  @db.Text
-  base_price_multiplier  Decimal  @default(1) @db.Decimal(3, 2)
-  technology_description String?  @db.VarChar(255)
-  icon_url               String?  @db.VarChar(255)
-  status                 String   @default("active") @db.VarChar(20)
-
-  screens screen[]
-
-  @@unique([type_name], map: "UQ_ScreenTypeName")
-}
-
-model seat {
-  id_seats    Int      @id @default(autoincrement())
-  id_screen   Int?
-  id_seattype Int?
-  seat_row    String   @db.Char(2)
-  seat_number Int
-  status      String   @default("active") @db.VarChar(20)
-
-  screen           screen?            @relation(fields: [id_screen], references: [id_screen], onDelete: Cascade, map: "fk_seat_screen")
-  seat_type        seat_type?         @relation(fields: [id_seattype], references: [id_seattype], map: "fk_seat_type")
-  detail_bookings  detail_booking[]
-  tickets          ticket[]
-  seat_locks       seat_locks[]
-
-  @@unique([id_screen, seat_row, seat_number], map: "UQ_ScreenSeat")
-  @@index([id_screen], map: "fk_seat_screen")
-  @@index([id_seattype], map: "fk_seat_type")
-}
-
-model seat_locks {
-  id_lock     Int      @id @default(autoincrement())
-  id_showtime Int
-  id_seats    Int
-  session_id  String   @db.VarChar(100)
-  created_at  DateTime @default(now()) @db.DateTime(0)
-  expires_at  DateTime @db.DateTime(0)
-
-  showtime showtimes @relation(fields: [id_showtime], references: [id_showtime], onDelete: Cascade, map: "FK_SeatLock_Showtime")
-  seat     seat      @relation(fields: [id_seats], references: [id_seats], onDelete: Cascade, map: "FK_SeatLock_Seat")
-
-  @@unique([id_showtime, id_seats], map: "UQ_ShowtimeSeat")
-  @@index([id_seats], map: "FK_SeatLock_Seat")
-  @@index([id_showtime], map: "FK_SeatLock_Showtime")
-}
-
-model seat_type {
-  id_seattype      Int      @id @default(autoincrement())
-  type_name        String   @db.VarChar(50)
-  price_multiplier Decimal  @default(1) @db.Decimal(3, 2)
-  description      String?  @db.VarChar(255)
-  icon_url         String?  @db.VarChar(255)
-
-  seats              seat[]
-  ticket_constraints ticket_seat_constraint[]
-
-  @@unique([type_name], map: "UQ_SeatTypeName")
-}
-
-model showtimes {
-  id_showtime Int      @id @default(autoincrement())
-  id_movie    Int?
-  id_screen   Int?
-  start_time  DateTime @db.Time(0)
-  end_time    DateTime @db.Time(0)
-  show_date   DateTime @db.Date
-  format      String   @default("2D") @db.VarChar(10)
-  language    String?  @db.VarChar(50)
-  subtitle    String?  @db.VarChar(50)
-  status      String   @default("available") @db.VarChar(20)
-  price       Decimal  @default(0) @db.Decimal(10, 2)
-
-  movie     movies?    @relation(fields: [id_movie], references: [id_movie], onDelete: Cascade, map: "fk_showtimes_movie")
-  screen    screen?    @relation(fields: [id_screen], references: [id_screen], onDelete: Cascade, map: "fk_showtimes_screen")
-  bookings  bookings[]
-  seat_locks seat_locks[]
-
-  @@unique([id_screen, show_date, start_time], map: "UQ_Showtime")
-  @@index([id_movie], map: "fk_showtimes_movie")
-  @@index([id_screen], map: "fk_showtimes_screen")
-}
-
-model staff {
-  id_staff       Int      @id @default(autoincrement())
-  id_typestaff   Int?
-  staff_name     String   @db.VarChar(100)
-  email          String   @db.VarChar(100)
-  password_hash  String   @db.VarChar(255)
-  phone_number   String?  @db.VarChar(20)
-  address        String?  @db.VarChar(255)
-  date_of_birth  DateTime? @db.Date
-  hire_date      DateTime? @default(dbgenerated("curdate()")) @db.Date
-  status         String   @default("active") @db.VarChar(20)
-  profile_image  String?  @db.VarChar(255)
-
-  type_staff     type_staff?     @relation(fields: [id_typestaff], references: [id_typestaff], map: "fk_staff_type")
-  bookings       bookings[]
-  contacts       contact[]
-  news           news[]
-  order_products order_product[]
-  entertainments entertainment[]
-
-  @@unique([email], map: "UQ_StaffEmail")
-  @@index([id_typestaff], map: "fk_staff_type")
-}
-
-model ticket {
-  id_ticket    Int      @id @default(autoincrement())
-  id_booking   Int
-  id_seats     Int
-  id_tickettype Int
-  ticket_code  String?  @db.VarChar(20)
-  price        Decimal  @db.Decimal(10, 2)
-  status       String   @default("valid") @db.VarChar(20)
-
-  booking     bookings    @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, map: "fk_ticket_booking")
-  seat        seat        @relation(fields: [id_seats], references: [id_seats], map: "fk_ticket_seat")
-  ticket_type ticket_type @relation(fields: [id_tickettype], references: [id_tickettype], map: "fk_ticket_type")
-
-  @@unique([ticket_code], map: "UQ_TicketCode")
-  @@index([id_booking], map: "fk_ticket_booking")
-  @@index([id_seats], map: "fk_ticket_seat")
-  @@index([id_tickettype], map: "fk_ticket_type")
-}
-
-model ticket_seat_constraint {
-  id_tickettype Int
-  id_seattype   Int
-
-  ticket_type ticket_type @relation(fields: [id_tickettype], references: [id_tickettype], onDelete: Cascade, map: "fk_ticketseat_ticket")
-  seat_type   seat_type   @relation(fields: [id_seattype], references: [id_seattype], onDelete: Cascade, map: "fk_ticketseat_seat")
-
-  @@id([id_tickettype, id_seattype])
-  @@index([id_seattype], map: "fk_ticketseat_seat")
-}
-
-model ticket_type {
-  id_tickettype    Int      @id @default(autoincrement())
-  type_name        String   @db.VarChar(50)
-  description      String?  @db.VarChar(255)
-  price_multiplier Decimal  @default(1) @db.Decimal(3, 2)
-  age_min          Int?
-  age_max          Int?
-  required_id      Boolean  @default(false)
-  icon_url         String?  @db.VarChar(255)
-  status           String   @default("active") @db.VarChar(20)
-  fixed_price      Decimal? @db.Decimal(10, 2)
-
-  tickets          ticket[]
-  detail_bookings  detail_booking[]
-  seat_constraints ticket_seat_constraint[]
-
-  @@unique([type_name], map: "UQ_TicketTypeName")
-}
-
-model type_member {
-  id_typemember Int     @id @default(autoincrement())
-  type_name     String  @db.VarChar(50)
-  description   String? @db.VarChar(255)
-  priority      Int     @default(1)
-
-  members member[]
-
-  @@unique([type_name], map: "UQ_TypeMemberName")
-}
-
-model type_product {
-  id_typeproduct Int     @id @default(autoincrement())
-  type_name      String  @db.VarChar(50)
-  description    String? @db.VarChar(255)
-  image          String? @db.VarChar(255)
-
-  products product[]
-
-  @@unique([type_name], map: "UQ_ProductTypeName")
-}
-
-model type_staff {
-  id_typestaff     Int     @id @default(autoincrement())
-  type_name        String  @db.VarChar(50)
-  description      String? @db.VarChar(255)
-  permission_level Int     @default(1)
-
-  staff staff[]
-
-  @@unique([type_name], map: "UQ_StaffTypeName")
-}
-
-model user_logs {
-  id_userlog      Int      @id @default(autoincrement())
-  id_users        Int?
-  action_type     String   @db.VarChar(50)
-  action_time     DateTime @default(now()) @db.DateTime(0)
-  ip_address      String?  @db.VarChar(45)
-  device_info     String?  @db.VarChar(255)
-  additional_info String?  @db.Text
-
-  user users? @relation(fields: [id_users], references: [id_users], onDelete: Cascade, map: "fk_userlog_user")
-
-  @@index([id_users], map: "fk_userlog_user")
-}
-
-model users {
-  id_users          Int      @id @default(autoincrement())
-  username          String   @db.VarChar(50)
-  email             String   @db.VarChar(100)
-  password_hash     String   @db.VarChar(255)
-  full_name         String   @db.VarChar(100)
-  phone_number      String?  @db.VarChar(20)
-  date_of_birth     DateTime? @db.Date
-  gender            String?  @db.VarChar(10)
-  address           String?  @db.VarChar(255)
-  profile_image     String?  @db.VarChar(255)
-  created_at        DateTime @default(now()) @db.DateTime(0)
-  updated_at        DateTime @default(now()) @updatedAt @db.DateTime(0)
-  role              String   @default("user") @db.VarChar(20)
-  status            String   @default("active") @db.VarChar(20)
-  reset_token       String?  @db.VarChar(255)
-  reset_token_expiry DateTime? @db.DateTime(0)
-
-  bookings  bookings[]
-  reviews   review[]
-  user_logs user_logs[]
-  member    member?
-
-  @@unique([email], map: "UQ_UserEmail")
-  @@unique([username], map: "UQ_Username")
 }

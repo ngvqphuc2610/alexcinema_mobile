@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import FormField from './FormField';
 import Button from '../common/Button';
+import { uploadImage } from '../../api/uploads';
 
 export interface CinemaFormValues {
   cinemaName: string;
@@ -33,9 +34,29 @@ const CinemaForm = ({ defaultValues, isSubmitting, onSubmit, onCancel }: CinemaF
       status: 'active',
     },
   );
+  const [isUploading, setUploading] = useState(false);
 
   const handleChange = (field: keyof CinemaFormValues, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await uploadImage(file);
+      setValues((prev) => ({ ...prev, image: response.url }));
+    } catch (error) {
+      console.error('Failed to upload cinema image', error);
+      window.alert('Tai anh that bai, vui long thu lai.');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
 
   return (
@@ -86,6 +107,8 @@ const CinemaForm = ({ defaultValues, isSubmitting, onSubmit, onCancel }: CinemaF
           value={values.image ?? ''}
           onChange={(event) => handleChange('image', event.target.value)}
         />
+        <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+        {isUploading && <small className="text-muted">Dang tai anh...</small>}
       </FormField>
       <FormField label="So dien thoai" htmlFor="cinema-contact">
         <input
@@ -127,4 +150,3 @@ const CinemaForm = ({ defaultValues, isSubmitting, onSubmit, onCancel }: CinemaF
 };
 
 export default CinemaForm;
-
