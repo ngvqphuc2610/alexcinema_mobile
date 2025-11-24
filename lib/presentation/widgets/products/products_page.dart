@@ -3,11 +3,23 @@ import 'package:flutter/material.dart';
 import '../../../core/di/dependency_injection.dart';
 import '../../../data/models/entity/product_entity.dart';
 import '../../../domain/services/product_service.dart';
+import '../buyticket/booking_flow_shell.dart';
 import 'card_products.dart';
 import 'grid_products.dart';
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({super.key});
+  const ProductsPage({
+    super.key,
+    this.selectedSeats = const [],
+    this.ticketTotal = 0,
+    this.movieTitle,
+    this.showtimeLabel,
+  });
+
+  final List<String> selectedSeats;
+  final double ticketTotal;
+  final String? movieTitle;
+  final String? showtimeLabel;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -65,19 +77,38 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: const Text('Combo'),
-      ),
-      body: _buildBody(),
-      bottomNavigationBar: _buildCheckoutBar(context),
+    final totalItems = _quantities.values.fold<int>(
+      0,
+      (previous, element) => previous + element,
+    );
+    final productTotal = _productTotal();
+    final combinedTotal = widget.ticketTotal + productTotal;
+    final seatsText = widget.selectedSeats.isEmpty
+        ? '0 Ghế'
+        : '${widget.selectedSeats.length} Ghế: ${widget.selectedSeats.join(', ')}';
+    final productText = _selectedProductsSummary(totalItems);
+    final subtitle = widget.movieTitle != null && widget.showtimeLabel != null
+        ? '${widget.movieTitle} - ${widget.showtimeLabel}'
+        : widget.movieTitle ?? widget.showtimeLabel ?? 'Chọn sản phẩm kèm vé';
+
+    return BookingFlowShell(
+      title: 'Combo',
+      subtitle: subtitle,
+      summaryLines: [
+        seatsText,
+        productText,
+        'Tổng cộng: ${combinedTotal.toStringAsFixed(0)} đ',
+      ],
+      primaryLabel: 'Tiếp tục',
+      primaryEnabled: true,
+      onPrimaryAction: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tổng cộng: ${combinedTotal.toStringAsFixed(0)} đ'),
+          ),
+        );
+      },
+      child: _buildBody(),
     );
   }
 
@@ -91,9 +122,9 @@ class _ProductsPageState extends State<ProductsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Không thể tải sản phẩm',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+            const Text(
+              'Không tải được sản phẩm',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -112,9 +143,7 @@ class _ProductsPageState extends State<ProductsPage> {
     }
 
     if (_categories.isEmpty) {
-      return const Center(
-        child: Text('Chưa có sản phẩm nào.'),
-      );
+      return const Center(child: Text('Chưa có sản phẩm nào.'));
     }
 
     return RefreshIndicator(
@@ -163,41 +192,30 @@ class _ProductsPageState extends State<ProductsPage> {
     });
   }
 
-  Widget _buildCheckoutBar(BuildContext context) {
-    final totalItems =
-        _quantities.values.fold<int>(0, (previous, element) => previous + element);
-    if (totalItems == 0) {
-      return const SizedBox.shrink();
+  double _productTotal() {
+    var total = 0.0;
+    for (final category in _categories) {
+      for (final product in category.products) {
+        final qty = _quantities[product.id] ?? 0;
+        total += qty * product.price;
+      }
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-        child: Text(
-          'Tiếp tục • $totalItems mục',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
+    return total;
+  }
+
+  String _selectedProductsSummary(int totalItems) {
+    if (totalItems == 0) {
+      return 'Chưa chọn sản phẩm';
+    }
+    final parts = <String>[];
+    for (final category in _categories) {
+      for (final product in category.products) {
+        final qty = _quantities[product.id] ?? 0;
+        if (qty > 0) {
+          parts.add('${qty}x ${product.name}');
+        }
+      }
+    }
+    return parts.isEmpty ? 'Chưa chọn sản phẩm' : parts.join(', ');
   }
 }

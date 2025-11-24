@@ -7,6 +7,7 @@ import '../../../../data/models/entity/movie_entity.dart';
 import '../../../bloc/showtime/showtime_bloc.dart';
 import '../../../bloc/showtime/showtime_event.dart';
 import '../../../bloc/showtime/showtime_state.dart';
+import '../../buyticket/showtime_selector.dart';
 import 'movie_detail_view.dart';
 import '../../../bloc/common/bloc_status.dart';
 
@@ -33,6 +34,16 @@ class MovieDetailScreen extends StatelessWidget {
             movie: movie,
             showtimes: state.items,
             isLoadingShowtimes: state.status.isLoading,
+            onShowtimeSelected: (showtime) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ShowtimeSelectorPage(
+                    movie: movie,
+                    showtime: showtime,
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
