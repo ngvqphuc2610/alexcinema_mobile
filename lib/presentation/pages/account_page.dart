@@ -1,16 +1,19 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/services/biometric_service.dart';
+import '../../core/di/dependency_injection.dart';
 import '../../data/models/entity/user_entity.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
 import '../bloc/auth/auth_state.dart';
 import '../bloc/common/bloc_status.dart';
+import '../bloc/two_factor/two_factor_cubit.dart';
 import '../widgets/buttons/btnRegisLogin.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import 'two_factor/two_factor_settings_page.dart';
+import '../pages/two_factor/backup_codes_page.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -26,7 +29,8 @@ class AccountPage extends StatelessWidget {
               if (state.isAuthenticated)
                 IconButton(
                   icon: const Icon(Icons.logout),
-                  onPressed: () => context.read<AuthBloc>().add(const AuthLogoutRequested()),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(const AuthLogoutRequested()),
                   tooltip: 'Đăng xuất',
                 ),
             ],
@@ -51,23 +55,20 @@ class AccountPage extends StatelessWidget {
   }
 
   Future<void> _openLogin(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
   }
 
   Future<void> _openRegister(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const RegisterPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const RegisterPage()));
   }
 }
 
 class _GuestView extends StatelessWidget {
-  const _GuestView({
-    required this.onLogin,
-    required this.onRegister,
-  });
+  const _GuestView({required this.onLogin, required this.onRegister});
 
   final VoidCallback onLogin;
   final VoidCallback onRegister;
@@ -85,7 +86,9 @@ class _GuestView extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'Bạn chưa đăng nhập',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -101,7 +104,9 @@ class _GuestView extends StatelessWidget {
             onPressed: onRegister,
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
             ),
             child: const Text('Tạo tài khoản'),
           ),
@@ -133,7 +138,9 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
 
   Future<void> _loadBiometricStatus() async {
     final available = await BiometricAuth.canAuthenticate();
-    final enabled = available ? await BiometricAuth.isEnabled(widget.user.id.toString()) : false;
+    final enabled = available
+        ? await BiometricAuth.isEnabled(widget.user.id.toString())
+        : false;
     if (!mounted) return;
     setState(() {
       _biometricAvailable = available;
@@ -192,9 +199,7 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           content: TextField(
             controller: controller,
             obscureText: true,
-            decoration: const InputDecoration(
-              hintText: 'Mật khẩu hiện tại',
-            ),
+            decoration: const InputDecoration(hintText: 'Mật khẩu hiện tại'),
           ),
           actions: [
             TextButton(
@@ -212,9 +217,9 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -226,7 +231,9 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
       children: [
         Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -270,7 +277,9 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
                 const SizedBox(height: 20),
                 Text(
                   'Thiết lập bảo mật',
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
@@ -280,8 +289,8 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
                     _biometricLoading
                         ? 'Đang kiểm tra hỗ trợ...'
                         : _biometricAvailable
-                            ? 'Bật xác thực vân tay / Face ID để đăng nhập nhanh.'
-                            : 'Thiết bị không hỗ trợ sinh trắc học.',
+                        ? 'Bật xác thực vân tay / Face ID để đăng nhập nhanh.'
+                        : 'Thiết bị không hỗ trợ sinh trắc học.',
                   ),
                   trailing: _biometricLoading
                       ? const SizedBox(
@@ -291,16 +300,23 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
                         )
                       : Switch.adaptive(
                           value: _biometricEnabled,
-                          onChanged: _biometricAvailable ? _toggleBiometric : null,
+                          onChanged: _biometricAvailable
+                              ? _toggleBiometric
+                              : null,
                         ),
                   onTap: _biometricLoading || !_biometricAvailable
                       ? null
                       : () => _toggleBiometric(!_biometricEnabled),
                 ),
                 ListTile(
-                  leading: Icon(Icons.shield_outlined, color: theme.primaryColor),
+                  leading: Icon(
+                    Icons.shield_outlined,
+                    color: theme.primaryColor,
+                  ),
                   title: const Text('Mã OTP & TOTP'),
-                  subtitle: const Text('Quản lý OTP, TOTP Google Authenticator'),
+                  subtitle: const Text(
+                    'Quản lý OTP, TOTP Google Authenticator',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.of(context).push(
@@ -310,18 +326,41 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
                     );
                   },
                 ),
+                ListTile(
+                  leading: Icon(Icons.key, color: theme.primaryColor),
+                  title: const Text('Mã dự phòng (Backup Codes)'),
+                  subtitle: const Text(
+                    'Xem và sao chép các mã dự phòng 2FA của bạn.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => serviceLocator<TwoFactorCubit>(),
+                          child: const BackupCodesPage(
+                            isSetup: false,
+                          ),
+                        ),
+                    )
+                    );
+                  },
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
-          onPressed: () => context.read<AuthBloc>().add(const AuthLogoutRequested()),
+          onPressed: () =>
+              context.read<AuthBloc>().add(const AuthLogoutRequested()),
           icon: const Icon(Icons.logout),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.redAccent,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
           ),
           label: const Text('Đăng xuất'),
         ),

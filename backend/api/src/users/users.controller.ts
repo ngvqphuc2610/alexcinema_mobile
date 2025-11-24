@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
   Request,
   UseGuards,
@@ -16,10 +17,12 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { UsersService, UserPaginationParams } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Enable2faDto } from './dto/enable-2fa.dto';
+import { Disable2faDto } from './dto/disable-2fa.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -75,6 +78,36 @@ export class UsersController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/2fa/setup')
+  setup2FA(@Request() req: any) {
+    return this.usersService.setup2FA(req.user.id_users);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/2fa/enable')
+  enable2FA(@Request() req: any, @Body() dto: Enable2faDto) {
+    return this.usersService.enable2FA(req.user.id_users, dto.token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/2fa/disable')
+  disable2FA(@Request() req: any, @Body() dto: Disable2faDto) {
+    return this.usersService.disable2FA(req.user.id_users, dto.token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/2fa/backup-codes')
+  getBackupCodes(@Request() req: any) {
+    return this.usersService.getBackupCodes(req.user.id_users);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/2fa/backup-codes/regenerate')
+  regenerateBackupCodes(@Request() req: any) {
+    return this.usersService.regenerateBackupCodes(req.user.id_users);
   }
 
   private toNumber(value?: string): number | undefined {

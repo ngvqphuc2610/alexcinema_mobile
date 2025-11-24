@@ -1,8 +1,5 @@
 class TwoFactorSecretDto {
-  const TwoFactorSecretDto({
-    required this.secret,
-    required this.qrCodeUrl,
-  });
+  const TwoFactorSecretDto({required this.secret, required this.qrCodeUrl});
 
   final String secret;
   final String qrCodeUrl;
@@ -10,7 +7,7 @@ class TwoFactorSecretDto {
   factory TwoFactorSecretDto.fromJson(Map<String, dynamic> json) {
     return TwoFactorSecretDto(
       secret: json['secret'] as String,
-      qrCodeUrl: json['qrCodeUrl'] as String,
+      qrCodeUrl: json['qrCode'] as String? ?? json['qrCodeUrl'] as String,
     );
   }
 }

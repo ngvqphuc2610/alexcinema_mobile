@@ -1,6 +1,7 @@
 package com.example.alexcinema;
 
-import io.flutter.embedding.android.FlutterActivity;
+import io.flutter.embedding.android.FlutterFragmentActivity;
 
-public class MainActivity extends FlutterActivity {
+// local_auth trên Android yêu cầu FragmentActivity để hiển thị BiometricPrompt
+public class MainActivity extends FlutterFragmentActivity {
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -28,6 +30,40 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
   void dispose() {
     _codeController.dispose();
     super.dispose();
+  }
+
+  Widget _buildQrWidget(String? qrCodeUrl) {
+    if (qrCodeUrl == null) {
+      return const SizedBox(
+        height: 200,
+        width: 200,
+        child: Center(child: Text('No QR Code')),
+      );
+    }
+
+    // Backend trả về data:image/png;base64,... thì hiển thị trực tiếp ảnh
+    if (qrCodeUrl.startsWith('data:image')) {
+      try {
+        final parts = qrCodeUrl.split(',');
+        final base64Data = parts.length > 1 ? parts[1] : parts[0];
+        final bytes = base64Decode(base64Data);
+        return Image.memory(
+          bytes,
+          height: 200,
+          width: 200,
+          fit: BoxFit.contain,
+        );
+      } catch (_) {
+        // fallback xuống render QR từ nội dung nếu decode fail
+      }
+    }
+
+    // Trường hợp server trả về otpauth://... thì render QR trực tiếp
+    return QrImageView(
+      data: qrCodeUrl,
+      version: QrVersions.auto,
+      size: 200.0,
+    );
   }
 
   @override
@@ -83,17 +119,7 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
                       ),
                     ],
                   ),
-                  child: state.qrCodeUrl != null
-                      ? QrImageView(
-                          data: state.qrCodeUrl!,
-                          version: QrVersions.auto,
-                          size: 200.0,
-                        )
-                      : const SizedBox(
-                          height: 200,
-                          width: 200,
-                          child: Center(child: Text('No QR Code')),
-                        ),
+                  child: _buildQrWidget(state.qrCodeUrl),
                 ),
                 const SizedBox(height: 24),
                 const Text(

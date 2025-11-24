@@ -35,6 +35,21 @@ class AuthRegisterRequested extends AuthEvent {
   List<Object?> get props => [request];
 }
 
+class Auth2FARequested extends AuthEvent {
+  const Auth2FARequested({
+    required this.sessionToken,
+    required this.token,
+    required this.usernameOrEmail,
+  });
+
+  final String sessionToken;
+  final String token;
+  final String usernameOrEmail;
+
+  @override
+  List<Object?> get props => [sessionToken, token, usernameOrEmail];
+}
+
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }

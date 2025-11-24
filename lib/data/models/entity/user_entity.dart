@@ -34,20 +34,27 @@ class UserEntity extends Equatable {
   final bool twoFactorEnabled;
 
   factory UserEntity.fromJson(Map<String, dynamic> json) {
+    String? _stringify(dynamic value) {
+      if (value == null) return null;
+      if (value is String) return value;
+      if (value is List) return value.join(',');
+      return value.toString();
+    }
+
     return UserEntity(
       id: json['id_users'] as int? ?? json['id'] as int? ?? 0,
-      username: json['username'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      fullName: json['full_name'] as String? ?? json['fullName'] as String? ?? '',
-      role: json['role'] as String? ?? 'user',
-      status: json['status'] as String? ?? 'active',
+      username: _stringify(json['username']) ?? '',
+      email: _stringify(json['email']) ?? '',
+      fullName: _stringify(json['full_name'] ?? json['fullName']) ?? '',
+      role: _stringify(json['role']) ?? 'user',
+      status: _stringify(json['status']) ?? 'active',
       createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
       updatedAt: _parseDate(json['updated_at']) ?? DateTime.now(),
-      phoneNumber: json['phone_number'] as String? ?? json['phoneNumber'] as String?,
+      phoneNumber: _stringify(json['phone_number'] ?? json['phoneNumber']),
       dateOfBirth: _parseDate(json['date_of_birth'] ?? json['dateOfBirth']),
-      gender: json['gender'] as String?,
-      address: json['address'] as String?,
-      profileImage: json['profile_image'] as String? ?? json['profileImage'] as String?,
+      gender: _stringify(json['gender']),
+      address: _stringify(json['address']),
+      profileImage: _stringify(json['profile_image'] ?? json['profileImage']),
       twoFactorEnabled: json['two_factor_enabled'] as bool? ?? false,
     );
   }
