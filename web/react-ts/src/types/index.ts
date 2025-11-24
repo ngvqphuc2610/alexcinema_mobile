@@ -31,6 +31,8 @@ export interface AuthResponse {
   accessToken: string;
   expiresIn: string;
   user: AuthUser;
+  requires2FA?: boolean;
+  sessionToken?: string;
 }
 
 export interface User extends AuthUser {}
@@ -111,6 +113,7 @@ export interface Promotion {
   promotion_code: string;
   title: string;
   description?: string | null;
+  image?: string | null;
   discount_percent: string;
   discount_amount: string;
   start_date: string;

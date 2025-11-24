@@ -8,6 +8,7 @@ const schema = z.object({
   promotionCode: z.string().min(1, 'Nhap ma khuyen mai').max(20, 'Toi da 20 ky tu'),
   title: z.string().min(1, 'Nhap tieu de').max(100, 'Toi da 100 ky tu'),
   description: z.string().optional().or(z.literal('')),
+  image: z.string().url('Image phải là URL hợp lệ').optional().or(z.literal('')),
   discountPercent: z.coerce.number().min(0).optional(),
   discountAmount: z.coerce.number().min(0).optional(),
   startDate: z.string().min(1, 'Chon ngay ap dung'),
@@ -25,6 +26,7 @@ export interface PromotionFormProps {
   onSubmit: (values: PromotionFormValues) => Promise<void> | void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  onUploadImage?: (file: File) => Promise<string>;
 }
 
 const normalize = (values: PromotionFormValues) => ({
@@ -32,6 +34,7 @@ const normalize = (values: PromotionFormValues) => ({
   promotionCode: values.promotionCode.trim(),
   title: values.title.trim(),
   description: values.description?.trim() || undefined,
+  image: values.image?.trim() || undefined,
   endDate: values.endDate?.trim() || undefined,
   status: values.status?.trim() || undefined,
   discountPercent:
@@ -48,10 +51,12 @@ const normalize = (values: PromotionFormValues) => ({
     values.usageLimit !== undefined && !Number.isNaN(values.usageLimit) ? Math.trunc(values.usageLimit) : undefined,
 });
 
-const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: PromotionFormProps) => {
+const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false, onUploadImage }: PromotionFormProps) => {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<PromotionFormValues>({
     resolver: zodResolver(schema),
@@ -59,6 +64,7 @@ const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false
       promotionCode: '',
       title: '',
       description: '',
+      image: '',
       discountPercent: undefined,
       discountAmount: undefined,
       startDate: '',
@@ -72,6 +78,15 @@ const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false
   });
 
   const handleFormSubmit = handleSubmit(async (values) => onSubmit(normalize(values)));
+  const imageValue = watch('image', defaultValues?.image);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!onUploadImage) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const url = await onUploadImage(file);
+    setValue('image', url, { shouldValidate: true, shouldDirty: true });
+  };
 
   return (
     <form className="form" onSubmit={handleFormSubmit}>
@@ -92,6 +107,20 @@ const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false
           placeholder="Chi tiet chuong trinh khuyen mai"
         />
       </FormField>
+
+      <div className="form__grid form__grid--two">
+        <FormField label="Anh (URL)" htmlFor="promotion-image" error={errors.image?.message}>
+          <input id="promotion-image" {...register('image')} placeholder="https://..." />
+        </FormField>
+        <FormField label="Tải ảnh" htmlFor="promotion-image-upload">
+          <input id="promotion-image-upload" type="file" accept="image/*" onChange={handleFileChange} />
+          {imageValue && (
+            <div className="form__image-preview">
+              <img src={imageValue} alt="preview" style={{ maxHeight: 80, marginTop: 8 }} />
+            </div>
+          )}
+        </FormField>
+      </div>
 
       <div className="form__grid form__grid--three">
         <FormField label="Giam (%)" htmlFor="promotion-discountPercent" error={errors.discountPercent?.message}>
@@ -134,4 +163,3 @@ const PromotionForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false
 };
 
 export default PromotionForm;
-

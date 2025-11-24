@@ -13,6 +13,7 @@ export interface PromotionPayload extends Record<string, unknown> {
   promotionCode: string;
   title: string;
   description?: string;
+  image?: string;
   discountPercent?: number;
   discountAmount?: number;
   startDate: string;

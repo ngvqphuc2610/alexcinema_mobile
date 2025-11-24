@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthUser } from '../types';
+import type { AuthResponse, AuthUser } from '../types';
 import * as authApi from '../api/auth';
 import { AUTH_UNAUTHORIZED_EVENT, setAuthToken } from '../api/client';
 import {
@@ -22,7 +22,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (params: { usernameOrEmail: string; password: string }) => Promise<void>;
+  login: (params: { usernameOrEmail: string; password: string }) => Promise<AuthResponse>;
+  verify2FA: (params: { usernameOrEmail: string; token: string; sessionToken: string }) => Promise<AuthResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -83,6 +84,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async ({ usernameOrEmail, password }: { usernameOrEmail: string; password: string }) => {
       const normalized = usernameOrEmail.trim();
       const response = await authApi.login({ usernameOrEmail: normalized, password });
+      if (response.requires2FA && response.sessionToken) {
+        return { ...response, user: response.user };
+      }
       if (response.user.role !== 'admin') {
         throw new Error('Tai khoan khong co quyen quan tri.');
       }
@@ -90,6 +94,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAuthToken(response.accessToken);
       setUser(response.user);
       setToken(response.accessToken);
+      return response;
+    },
+    [],
+  );
+
+  const verify2FA = useCallback(
+    async ({ usernameOrEmail, token, sessionToken }: { usernameOrEmail: string; token: string; sessionToken: string }) => {
+      const normalized = usernameOrEmail.trim();
+      const response = await authApi.verify2FA({ usernameOrEmail: normalized, token, sessionToken });
+      if (response.user.role !== 'admin') {
+        throw new Error('Tai khoan khong co quyen quan tri.');
+      }
+      storeAuthSession(response.accessToken, response.user);
+      setAuthToken(response.accessToken);
+      setUser(response.user);
+      setToken(response.accessToken);
+      return response;
     },
     [],
   );
@@ -106,10 +127,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       token,
       isLoading,
       login,
+      verify2FA,
       logout,
       refreshProfile,
     }),
-    [user, token, isLoading, login, logout, refreshProfile],
+    [user, token, isLoading, login, verify2FA, logout, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
