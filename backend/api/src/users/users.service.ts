@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Prisma, users } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { TotpService } from '../../services/totpService';
+
 
 export interface UserPaginationParams {
   page?: number;
@@ -11,11 +13,17 @@ export interface UserPaginationParams {
   search?: string;
 }
 
-export type UserEntity = Omit<users, 'password_hash'>;
+export type UserEntity = Omit<users, 'password_hash'
+ | 'two_factor_secret' | 'reset_token'
+  | 'reset_token_expiry'
+>;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly totpService: TotpService,
+  ) { }
 
   async create(dto: CreateUserDto): Promise<UserEntity> {
     const passwordHash = await this.hashPassword(dto.password);
@@ -45,12 +53,12 @@ export class UsersService {
     const limit = Math.min(100, Math.max(1, params.limit ?? 20));
     const where: Prisma.usersWhereInput = params.search
       ? {
-          OR: [
-            { username: { contains: params.search } },
-            { email: { contains: params.search } },
-            { full_name: { contains: params.search } },
-          ],
-        }
+        OR: [
+          { username: { contains: params.search } },
+          { email: { contains: params.search } },
+          { full_name: { contains: params.search } },
+        ],
+      }
       : {};
 
     const [items, total] = await this.prisma.$transaction([
@@ -156,11 +164,194 @@ export class UsersService {
 
   private toUserEntity(user: users): UserEntity {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, ...rest } = user;
+    const { password_hash, two_factor_secret, reset_token, reset_token_expiry, ...rest } = user;
     return rest;
   }
 
   private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
+  }
+
+  async setup2FA(userId: number): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.findOne(userId);
+
+    if (user.two_factor_enabled) {
+      throw new UnauthorizedException('2FA đã được bật');
+    }
+
+    const setup = await this.totpService.generateTotpSetup(user.email);
+
+    await this.prisma.users.update({
+      where: { id_users: userId },
+      data: { two_factor_secret: setup.secret },
+    });
+
+    return {
+      secret: setup.secret,
+      qrCode: setup.qrCode,
+    };
+  }
+
+  async enable2FA(userId: number, token: string): Promise<{ user: UserEntity; backupCodes: string[] }> {
+    const user = await this.prisma.users.findUnique({
+      where: { id_users: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.two_factor_enabled) {
+      throw new UnauthorizedException('2FA đã được bật');
+    }
+
+    if (!user.two_factor_secret) {
+      throw new UnauthorizedException('Vui lòng thiết lập 2FA trước');
+    }
+
+    const isValid = this.totpService.verifyTotpToken(user.two_factor_secret, token);
+    if (!isValid) {
+      throw new UnauthorizedException('Mã xác thực không đúng');
+    }
+
+    // Generate backup codes
+    const backupCodes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      backupCodes.push(code);
+    }
+
+    // Enable 2FA and save backup codes
+    const updatedUser = await this.prisma.users.update({
+      where: { id_users: userId },
+      data: {
+        two_factor_enabled: true,
+        two_factor_verified_at: new Date(),
+      },
+    });
+
+    // Save backup codes to database
+    await this.prisma.user_backup_codes.deleteMany({
+      where: { id_users: userId },
+    });
+
+    await this.prisma.user_backup_codes.createMany({
+      data: backupCodes.map(code => ({
+        id_users: userId,
+        code,
+        used: false,
+      })),
+    });
+
+    return {
+      user: this.toUserEntity(updatedUser),
+      backupCodes,
+    };
+  }
+
+  async disable2FA(userId: number, token: string): Promise<UserEntity> {
+    const user = await this.prisma.users.findUnique({
+      where: { id_users: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.two_factor_enabled) {
+      throw new UnauthorizedException('2FA chưa được bật');
+    }
+
+    if (!user.two_factor_secret) {
+      throw new UnauthorizedException('2FA chưa được thiết lập');
+    }
+
+    const isValid = this.totpService.verifyTotpToken(user.two_factor_secret, token);
+    if (!isValid) {
+      throw new UnauthorizedException('Mã xác thực không đúng');
+    }
+
+    // Disable 2FA and delete backup codes
+    const updatedUser = await this.prisma.users.update({
+      where: { id_users: userId },
+      data: {
+        two_factor_enabled: false,
+        two_factor_secret: null,
+        two_factor_verified_at: null,
+      },
+    });
+
+    // Delete all backup codes
+    await this.prisma.user_backup_codes.deleteMany({
+      where: { id_users: userId },
+    });
+
+    return this.toUserEntity(updatedUser);
+  }
+
+  async getBackupCodes(userId: number): Promise<{ codes: string[] }> {
+    const user = await this.prisma.users.findUnique({
+      where: { id_users: userId },
+    });
+
+    if (!user || !user.two_factor_enabled) {
+      throw new UnauthorizedException('2FA chưa được bật');
+    }
+
+    const backupCodes = await this.prisma.user_backup_codes.findMany({
+      where: { id_users: userId, used: false },
+      select: { code: true },
+    });
+
+    return {
+      codes: backupCodes.map(bc => bc.code),
+    };
+  }
+
+  async regenerateBackupCodes(userId: number): Promise<{ codes: string[] }> {
+    const user = await this.prisma.users.findUnique({
+      where: { id_users: userId },
+    });
+
+    if (!user || !user.two_factor_enabled) {
+      throw new UnauthorizedException('2FA chưa được bật');
+    }
+
+    // Generate new backup codes
+    const newBackupCodes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      newBackupCodes.push(code);
+    }
+
+    // Delete old backup codes
+    await this.prisma.user_backup_codes.deleteMany({
+      where: { id_users: userId },
+    });
+
+    // Save new backup codes
+    await this.prisma.user_backup_codes.createMany({
+      data: newBackupCodes.map(code => ({
+        id_users: userId,
+        code,
+        used: false,
+      })),
+    });
+
+    return {
+      codes: newBackupCodes,
+    };
+  }
+
+  async consumeBackupCode(userId: number, code: string): Promise<boolean> {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) return false;
+
+    const updateResult = await this.prisma.user_backup_codes.updateMany({
+      where: { id_users: userId, code: normalized, used: false },
+      data: { used: true },
+    });
+
+    return updateResult.count > 0;
   }
 }

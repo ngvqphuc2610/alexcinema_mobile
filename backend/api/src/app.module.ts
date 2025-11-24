@@ -41,6 +41,7 @@ import { TicketSeatConstraintModule } from './ticket_seat_constraint/ticket_seat
 import { TicketTypeModule } from './ticket_type/ticket_type.module';
 import { UserLogsModule } from './user_logs/user_logs.module';
 import { UploadModule } from './upload/upload.module';
+import { OtpModule } from './otp/otp.module';
 
 @Module({
   imports: [
@@ -90,8 +91,9 @@ import { UploadModule } from './upload/upload.module';
     TicketTypeModule,
     UserLogsModule,
     UploadModule,
+    OtpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

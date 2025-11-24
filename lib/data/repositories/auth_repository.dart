@@ -10,9 +10,9 @@ class AuthRepository {
     required AuthRemoteDataSource remoteDataSource,
     required TokenStorage tokenStorage,
     required ApiClient apiClient,
-  })  : _remoteDataSource = remoteDataSource,
-        _tokenStorage = tokenStorage,
-        _apiClient = apiClient;
+  }) : _remoteDataSource = remoteDataSource,
+       _tokenStorage = tokenStorage,
+       _apiClient = apiClient;
 
   final AuthRemoteDataSource _remoteDataSource;
   final TokenStorage _tokenStorage;
@@ -20,7 +20,10 @@ class AuthRepository {
 
   Future<AuthResponseDto> login(LoginRequestDto dto) async {
     final response = await _remoteDataSource.login(dto);
-    await _persistToken(response.accessToken);
+    // Only persist token if 2FA is not required
+    if (response.requires2FA != true && response.accessToken.isNotEmpty) {
+      await _persistToken(response.accessToken);
+    }
     return response;
   }
 
@@ -48,8 +51,12 @@ class AuthRepository {
     _apiClient.updateAuthToken(token);
   }
 
-  Future<void> _persistToken(String token) async {
+  Future<void> persistToken(String token) async {
     await _tokenStorage.saveToken(token);
     _apiClient.updateAuthToken(token);
+  }
+
+  Future<void> _persistToken(String token) async {
+    await persistToken(token);
   }
 }

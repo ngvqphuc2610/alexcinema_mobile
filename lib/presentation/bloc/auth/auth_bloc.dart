@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/di/injection_container.dart';
 import '../../../data/models/dto/auth_response_dto.dart';
+import '../../../data/services/api_client.dart';
 import '../../../data/services/api_exception.dart';
 import '../../../domain/services/auth_service.dart';
 import '../common/bloc_status.dart';
@@ -15,6 +17,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<Auth2FARequested>(_on2FARequested);
   }
 
   final AuthService _authService;
@@ -47,20 +50,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authAction(
-      emit,
-      () => _authService.login(event.request),
-    );
+    await _authAction(emit, () => _authService.login(event.request));
   }
 
   Future<void> _onRegisterRequested(
     AuthRegisterRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authAction(
-      emit,
-      () => _authService.register(event.request),
-    );
+    await _authAction(emit, () => _authService.register(event.request));
   }
 
   Future<void> _onLogoutRequested(
@@ -95,12 +92,73 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(status: BlocStatus.loading, clearError: true));
     try {
       final response = await action();
+
+      // Check if 2FA is required
+      if (response.requires2FA == true && response.sessionToken != null) {
+        emit(
+          state.copyWith(
+            status: BlocStatus.success,
+            requires2FA: true,
+            sessionToken: response.sessionToken,
+            user: response.user,
+            userIsSet: true,
+            isInitialized: true,
+          ),
+        );
+        return;
+      }
+
       emit(
         state.copyWith(
           status: BlocStatus.success,
           user: response.user,
           userIsSet: true,
           isInitialized: true,
+          requires2FA: false,
+          clearSessionToken: true,
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          status: BlocStatus.failure,
+          errorMessage: mapErrorMessage(error),
+        ),
+      );
+    }
+  }
+
+  Future<void> _on2FARequested(
+    Auth2FARequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: BlocStatus.loading, clearError: true));
+    try {
+      final apiClient = sl<ApiClient>();
+      final response = await apiClient.post(
+        '/auth/verify-2fa',
+        body: {
+          'usernameOrEmail': event.usernameOrEmail,
+          'token': event.token,
+          'sessionToken': event.sessionToken,
+        },
+      );
+
+      final authResponse = AuthResponseDto.fromJson(response);
+
+      // Save token after successful 2FA
+      if (authResponse.accessToken.isNotEmpty) {
+        await _authService.persistToken(authResponse.accessToken);
+      }
+
+      emit(
+        state.copyWith(
+          status: BlocStatus.success,
+          user: authResponse.user,
+          userIsSet: true,
+          isInitialized: true,
+          requires2FA: false,
+          clearSessionToken: true,
         ),
       );
     } catch (error) {

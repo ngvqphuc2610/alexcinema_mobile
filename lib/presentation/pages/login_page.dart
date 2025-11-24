@@ -25,11 +25,13 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _twoFactorController = TextEditingController();
 
   bool _submitting = false;
   bool _obscurePassword = true;
   bool _biometricAvailable = false;
   List<BiometricAccount> _biometricAccounts = const [];
+  bool _useBackupCode = false;
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _twoFactorController.dispose();
     super.dispose();
   }
 
@@ -60,15 +63,21 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: SafeArea(
         child: BlocListener<AuthBloc, AuthState>(
-          listenWhen: (previous, current) => previous.status != current.status,
+          listenWhen: (previous, current) =>
+              previous.status != current.status ||
+              previous.requires2FA != current.requires2FA,
           listener: (context, state) async {
             if (!_submitting) return;
             if (state.status.isFailure) {
               setState(() => _submitting = false);
-              final message = state.errorMessage ?? 'Đăng nhập thất bại.';
+              final message = state.errorMessage ?? 'Dang nhap that bai.';
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+            } else if (state.status.isSuccess &&
+                state.requires2FA &&
+                state.sessionToken != null) {
+              setState(() => _submitting = false);
+              await _show2FADialog(state.sessionToken!);
             } else if (state.status.isSuccess && state.isAuthenticated) {
-              // Lưu thông tin đăng nhập cho sinh trắc học
               if (_biometricAvailable &&
                   _usernameController.text.isNotEmpty &&
                   _passwordController.text.isNotEmpty) {
@@ -102,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Đăng nhập',
+                    'Dang nhap',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: Colors.black87,
@@ -110,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Đăng nhập bằng tài khoản hoặc email của bạn',
+                    'Dang nhap bang tai khoan hoac email cua ban',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.black54,
                     ),
@@ -119,11 +128,12 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 18),
                     BiometricLoginButton(
                       enabled: _biometricAccounts.isNotEmpty && !_submitting,
-                      onPressed:
-                          _biometricAccounts.isNotEmpty && !_submitting ? _loginWithBiometric : null,
+                      onPressed: _biometricAccounts.isNotEmpty && !_submitting
+                          ? _loginWithBiometric
+                          : null,
                       helperText: _biometricAccounts.isNotEmpty
-                          ? 'Đăng nhập nhanh bằng vân tay / Face ID.'
-                          : 'Bật đăng nhập sinh trắc trong trang Tài khoản.',
+                          ? 'Dang nhap nhanh bang van tay / Face ID.'
+                          : 'Bat dang nhap sinh trac trong trang Tai khoan.',
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -132,13 +142,13 @@ class _LoginPageState extends State<LoginPage> {
                     textInputAction: TextInputAction.next,
                     decoration: _inputDecoration(
                       context,
-                      label: 'Tài khoản hoặc Email',
-                      hint: 'Nhập tài khoản hoặc email của bạn',
+                      label: 'Tai khoan hoac Email',
+                      hint: 'Nhap tai khoan hoac email cua ban',
                       icon: Icons.mail_outline,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Vui lòng nhập tài khoản hoặc email';
+                        return 'Vui long nhap tai khoan hoac email';
                       }
                       return null;
                     },
@@ -149,32 +159,30 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: _obscurePassword,
                     decoration: _inputDecoration(
                       context,
-                      label: 'Mật khẩu',
-                      hint: 'Nhập mật khẩu',
+                      label: 'Mat khau',
+                      hint: 'Nhap mat khau',
                       icon: _obscurePassword ? Icons.lock_outline : Icons.lock_open,
                     ).copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập mật khẩu';
+                        return 'Vui long nhap mat khau';
                       }
                       if (value.length < 6) {
-                        return 'Mật khẩu phải có ít nhất 6 ký tự';
+                        return 'Mat khau phai co it nhat 6 ky tu';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 28),
                   RegisLoginButton(
-                    label: _submitting ? 'Đang xử lý...' : 'Đăng nhập',
+                    label: _submitting ? 'Dang xu ly...' : 'Dang nhap',
                     onPressed: _submitting ? null : _submit,
                   ),
                   const SizedBox(height: 16),
@@ -183,17 +191,15 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       TextButton(
                         onPressed: _submitting ? null : () => _openForgotPassword(context),
-                        child: const Text('Quên mật khẩu?'),
+                        child: const Text('Quen mat khau?'),
                       ),
                       Text(
                         '/',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black45,
-                        ),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black45),
                       ),
                       TextButton(
                         onPressed: _submitting ? null : () => _openRegister(context),
-                        child: const Text('Tạo tài khoản'),
+                        child: const Text('Tao tai khoan'),
                       ),
                     ],
                   ),
@@ -209,31 +215,120 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loginWithBiometric() async {
     if (_biometricAccounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chưa có thông tin đăng nhập dạng vân tay.')),
+        const SnackBar(content: Text('Chua co thong tin dang nhap dang van tay.')),
       );
       return;
     }
     final account = await _pickAccount();
     if (account == null) return;
 
+    _usernameController.text = account.email;
+    _passwordController.text = account.password;
+
     final approved = await BiometricAuth.authenticate(
-      reason: 'Xác thực để đăng nhập bằng vân tay',
+      reason: 'Xac thuc de dang nhap bang van tay',
     );
     if (!approved) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Xác thực sinh trắc không thành công.')),
+        const SnackBar(content: Text('Xac thuc sinh trac khong thanh cong.')),
       );
       return;
     }
     setState(() => _submitting = true);
     context.read<AuthBloc>().add(
-          AuthLoginRequested(
-            LoginRequestDto(
-              usernameOrEmail: account.email,
-              password: account.password,
+      AuthLoginRequested(
+        LoginRequestDto(
+          usernameOrEmail: account.email,
+          password: account.password,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _show2FADialog(String sessionToken) async {
+    _twoFactorController.clear();
+    bool useBackup = _useBackupCode;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            final hasCode = _twoFactorController.text.trim().isNotEmpty;
+            return AlertDialog(
+              title: Text(useBackup ? 'Ma du phong' : 'Xac thuc 2FA'),
+              content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  useBackup
+                      ? 'Nhap ma du phong (backup code) cua ban.'
+                      : 'Nhap ma xac thuc tu ung dung Authenticator.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _twoFactorController,
+                  decoration: InputDecoration(
+                    labelText: useBackup ? 'Ma du phong' : 'Ma 2FA',
+                    hintText: useBackup ? 'ABCD-1234' : '000000',
+                    border: const OutlineInputBorder(),
+                    helperText: useBackup
+                        ? 'Ma gom chu/so, khong gioi han 6 ky tu.'
+                        : 'Ma 6 chu so tu app Authenticator.',
+                  ),
+                  keyboardType: useBackup ? TextInputType.text : TextInputType.number,
+                  maxLength: useBackup ? null : 6,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  textCapitalization:
+                      useBackup ? TextCapitalization.characters : TextCapitalization.none,
+                ),
+                TextButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      useBackup = !useBackup;
+                      _useBackupCode = useBackup;
+                      _twoFactorController.clear();
+                    });
+                  },
+                  child: Text(
+                    useBackup
+                        ? 'Dung ma 2FA thay vi backup code'
+                        : 'Dung ma du phong thay vi ma 2FA',
+                  ),
+                ),
+              ],
             ),
-          ),
-        );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Huy'),
+                ),
+                ElevatedButton(
+                  onPressed: hasCode
+                      ? () => Navigator.pop(dialogContext, true)
+                      : null,
+                  child: const Text('Xac nhan'),
+                ),
+              ],
+            );
+        },
+      ),
+    );
+
+    if (result == true && mounted) {
+      setState(() => _submitting = true);
+      final code = useBackup
+          ? _twoFactorController.text.trim().toUpperCase()
+          : _twoFactorController.text.trim();
+      context.read<AuthBloc>().add(
+        Auth2FARequested(
+          sessionToken: sessionToken,
+          token: code,
+          usernameOrEmail: _usernameController.text.trim(),
+        ),
+      );
+    }
   }
 
   void _submit() {
@@ -242,13 +337,13 @@ class _LoginPageState extends State<LoginPage> {
     }
     setState(() => _submitting = true);
     context.read<AuthBloc>().add(
-          AuthLoginRequested(
-            LoginRequestDto(
-              usernameOrEmail: _usernameController.text.trim(),
-              password: _passwordController.text.trim(),
-            ),
-          ),
-        );
+      AuthLoginRequested(
+        LoginRequestDto(
+          usernameOrEmail: _usernameController.text.trim(),
+          password: _passwordController.text.trim(),
+        ),
+      ),
+    );
   }
 
   Future<void> _openRegister(BuildContext context) async {
@@ -272,7 +367,7 @@ class _LoginPageState extends State<LoginPage> {
               const Padding(
                 padding: EdgeInsets.all(12),
                 child: Text(
-                  'Chọn tài khoản đăng nhập',
+                  'Chon tai khoan dang nhap',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
               ),
@@ -314,12 +409,7 @@ InputDecoration _inputDecoration(
     labelText: label,
     hintText: hint,
     floatingLabelBehavior: FloatingLabelBehavior.always,
-    suffixIcon: icon != null
-        ? Icon(
-            icon,
-            color: Colors.grey.shade600,
-          )
-        : null,
+    suffixIcon: icon != null ? Icon(icon, color: Colors.grey.shade600) : null,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: border(Colors.black12),
     enabledBorder: border(Colors.black26),

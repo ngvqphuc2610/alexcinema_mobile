@@ -103,10 +103,15 @@ class ApiClient {
       }
     }
 
-    final message = decoded is Map<String, dynamic>
-        ? (decoded['message'] as String?) ??
-              'Request failed with status $statusCode'
-        : 'Request failed with status $statusCode';
+    String message = 'Request failed with status $statusCode';
+    if (decoded is Map<String, dynamic>) {
+      final rawMessage = decoded['message'];
+      if (rawMessage is String && rawMessage.isNotEmpty) {
+        message = rawMessage;
+      } else if (rawMessage is List) {
+        message = rawMessage.join(', ');
+      }
+    }
 
     throw ApiException(
       message: message,

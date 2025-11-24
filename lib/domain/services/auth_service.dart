@@ -31,4 +31,8 @@ class AuthService {
   Future<String> requestPasswordReset(ForgotPasswordRequestDto dto) {
     return _repository.requestPasswordReset(dto);
   }
+
+  Future<void> persistToken(String token) {
+    return _repository.persistToken(token);
+  }
 }

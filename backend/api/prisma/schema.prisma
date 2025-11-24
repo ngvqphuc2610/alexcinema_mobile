@@ -296,6 +296,7 @@ model promotions {
   discount_amount  Decimal?   @default(0.00) @db.Decimal(10, 2)
   start_date       DateTime   @db.DateTime(0)
   end_date         DateTime?  @db.DateTime(0)
+  image            String?    @db.VarChar(255)
   min_purchase     Decimal?   @default(0.00) @db.Decimal(10, 2)
   max_discount     Decimal?   @db.Decimal(10, 2)
   usage_limit      Int?
