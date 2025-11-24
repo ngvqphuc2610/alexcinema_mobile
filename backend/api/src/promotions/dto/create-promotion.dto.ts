@@ -23,6 +23,11 @@ export class CreatePromotionDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  image?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)

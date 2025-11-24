@@ -7,6 +7,7 @@ class PromotionEntity extends Equatable {
     required this.title,
     required this.startDate,
     required this.status,
+    this.image,
     this.description,
     this.discountPercent,
     this.discountAmount,
@@ -20,6 +21,7 @@ class PromotionEntity extends Equatable {
   final String promotionCode;
   final String title;
   final String status;
+  final String? image;
   final DateTime startDate;
   final String? description;
   final double? discountPercent;
@@ -34,6 +36,7 @@ class PromotionEntity extends Equatable {
       id: json['id_promotions'] as int? ?? json['id'] as int? ?? 0,
       promotionCode: json['promotion_code'] as String? ?? json['promotionCode'] as String? ?? '',
       title: json['title'] as String? ?? '',
+      image: json['image'] as String? ?? json['image_url'] as String? ?? json['imageUrl'] as String?,
       description: json['description'] as String?,
       discountPercent: _toDouble(json['discount_percent'] ?? json['discountPercent']),
       discountAmount: _toDouble(json['discount_amount'] ?? json['discountAmount']),
@@ -51,6 +54,7 @@ class PromotionEntity extends Equatable {
       'id_promotions': id,
       'promotion_code': promotionCode,
       'title': title,
+      'image': image,
       'description': description,
       'discount_percent': discountPercent,
       'discount_amount': discountAmount,
@@ -94,6 +98,7 @@ class PromotionEntity extends Equatable {
         id,
         promotionCode,
         title,
+        image,
         description,
         discountPercent,
         discountAmount,

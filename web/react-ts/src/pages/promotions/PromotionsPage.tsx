@@ -13,6 +13,7 @@ import Modal from '../../components/common/Modal';
 import StatusDot from '../../components/common/StatusDot';
 import PromotionForm from '../../components/forms/PromotionForm';
 import { fetchPromotions, createPromotion, updatePromotion, deletePromotion } from '../../api/promotions';
+import { uploadImage } from '../../api/uploads';
 import type { Promotion } from '../../types';
 import { formatCurrency, formatDateTime, formatStatus } from '../../utils/format';
 
@@ -20,6 +21,7 @@ const mapPromotionToFormValues = (promotion: Promotion) => ({
   promotionCode: promotion.promotion_code,
   title: promotion.title,
   description: promotion.description ?? '',
+  image: promotion.image ?? '',
   discountPercent: promotion.discount_percent ? Number(promotion.discount_percent) : undefined,
   discountAmount: promotion.discount_amount ? Number(promotion.discount_amount) : undefined,
   startDate: promotion.start_date.substring(0, 10),
@@ -80,6 +82,12 @@ const PromotionsPage = () => {
         key: 'code',
         title: 'Ma',
         render: (promotion: Promotion) => promotion.promotion_code,
+      },
+      {
+        key: 'image',
+        title: 'Anh',
+        render: (promotion: Promotion) =>
+          promotion.image ? <img src={promotion.image} alt={promotion.title} style={{ height: 40 }} /> : '--',
       },
       {
         key: 'title',
@@ -172,12 +180,14 @@ const PromotionsPage = () => {
       <Modal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="Them khuyen mai">
         <PromotionForm
           isSubmitting={createMutation.isPending}
+          onUploadImage={async (file) => (await uploadImage(file)).url}
           onCancel={() => setCreateModalOpen(false)}
           onSubmit={(values) =>
             createMutation.mutate({
               promotionCode: values.promotionCode,
               title: values.title,
               description: values.description,
+              image: values.image,
               discountPercent: values.discountPercent,
               discountAmount: values.discountAmount,
               startDate: values.startDate,
@@ -204,6 +214,7 @@ const PromotionsPage = () => {
           <PromotionForm
             defaultValues={mapPromotionToFormValues(editingPromotion)}
             isSubmitting={updateMutation.isPending}
+            onUploadImage={async (file) => (await uploadImage(file)).url}
             onCancel={() => setEditingPromotion(null)}
             onSubmit={(values) =>
               updateMutation.mutate({
@@ -212,6 +223,7 @@ const PromotionsPage = () => {
                   promotionCode: values.promotionCode,
                   title: values.title,
                   description: values.description,
+                  image: values.image,
                   discountPercent: values.discountPercent,
                   discountAmount: values.discountAmount,
                   startDate: values.startDate,

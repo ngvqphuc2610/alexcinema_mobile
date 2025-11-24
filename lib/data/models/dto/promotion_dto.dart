@@ -3,6 +3,7 @@ class PromotionPayloadDto {
     required this.promotionCode,
     required this.title,
     required this.startDate,
+    this.image,
     this.description,
     this.discountPercent,
     this.discountAmount,
@@ -16,6 +17,7 @@ class PromotionPayloadDto {
   final String promotionCode;
   final String title;
   final DateTime startDate;
+  final String? image;
   final String? description;
   final double? discountPercent;
   final double? discountAmount;
@@ -29,6 +31,7 @@ class PromotionPayloadDto {
     return {
       'promotionCode': promotionCode.trim(),
       'title': title.trim(),
+      'image': image,
       'description': description,
       'discountPercent': discountPercent,
       'discountAmount': discountAmount,

@@ -19,6 +19,8 @@ import 'news/card_news.dart';
 import 'news/grid_news.dart';
 import '../widgets/cinemas/grid_cinemas.dart';
 import '../pages/enter_memship_page.dart';
+import '../widgets/promotions/grid_promotions.dart';
+import '../widgets/promotions/list_promotions.dart';
 
 class NavbarMainShell extends StatefulWidget {
   const NavbarMainShell({super.key});
@@ -50,7 +52,7 @@ class _NavbarMainShellState extends State<NavbarMainShell>
       MoviesPage(),
       CinemasTab(),
       EnterMemshipPage(),
-      ProductsPage(),
+      PromotionGridPage(),
       AccountPage(),
     ];
   }
@@ -125,10 +127,7 @@ class _ModernBottomNavBarState extends State<_ModernBottomNavBar>
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1A1A2E),
-            Color(0xFF15151E),
-          ],
+          colors: [Color(0xFF1A1A2E), Color(0xFF15151E)],
         ),
         boxShadow: [
           BoxShadow(
@@ -157,8 +156,8 @@ class _ModernBottomNavBarState extends State<_ModernBottomNavBar>
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeInOutCubic,
-                    left: itemWidth * widget.currentIndex +
-                        (itemWidth - 60) / 2,
+                    left:
+                        itemWidth * widget.currentIndex + (itemWidth - 60) / 2,
                     top: 0,
                     child: _AnimatedFab(
                       animation: _animationController,
@@ -192,10 +191,7 @@ class _AnimatedFab extends StatelessWidget {
   final Animation<double> animation;
   final _NavItem item;
 
-  const _AnimatedFab({
-    required this.animation,
-    required this.item,
-  });
+  const _AnimatedFab({required this.animation, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -286,11 +282,7 @@ class _AnimatedFab extends StatelessWidget {
                     ),
                   ),
                   // Icon
-                  Icon(
-                    item.icon,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+                  Icon(item.icon, color: Colors.white, size: 30),
                 ],
               ),
             ),
@@ -328,9 +320,10 @@ class _NavBarItemState extends State<_NavBarItem>
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.85,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -409,11 +402,6 @@ class _NavBarItemState extends State<_NavBarItem>
   }
 }
 
-
-
-
-
-
 class _ModernSegmentButton extends StatelessWidget {
   const _ModernSegmentButton({
     required this.label,
@@ -459,14 +447,17 @@ class _ModernSegmentButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white.withOpacity(0.5),
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color:
-                      isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.5),
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
@@ -492,16 +483,9 @@ class _LoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(
-            color: Color(0xFF8D4CE8),
-          ),
+          const CircularProgressIndicator(color: Color(0xFF8D4CE8)),
           const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
+          Text(message, style: TextStyle(color: Colors.white.withOpacity(0.7))),
         ],
       ),
     );

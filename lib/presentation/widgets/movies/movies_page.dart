@@ -155,7 +155,10 @@ class _MoviesPageState extends State<MoviesPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -185,7 +188,10 @@ class _MoviesPageState extends State<MoviesPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -253,15 +259,15 @@ class _MoviesPageState extends State<MoviesPage> {
   }
 
   void _openNowShowingList() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const NowShowingListPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const NowShowingListPage()));
   }
 
   void _openComingSoonList() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ComingSoonListPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ComingSoonListPage()));
   }
 }
 
