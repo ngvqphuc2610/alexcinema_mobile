@@ -10,6 +10,7 @@ import '../../bloc/showtime/showtime_bloc.dart';
 import '../../bloc/showtime/showtime_event.dart';
 import '../../bloc/showtime/showtime_state.dart';
 import '../../bloc/common/bloc_status.dart';
+import '../buyticket/showtime_selector.dart';
 import 'widgets/cinema_showtime_list.dart';
 
 class CinemaDetailPage extends StatefulWidget {
@@ -53,6 +54,18 @@ class _CinemaDetailPageState extends State<CinemaDetailPage> {
                     child: CinemaShowtimeList(
                       showtimes: showtimes,
                       isLoading: state.status.isLoading,
+                      onShowtimeTap: (showtime) {
+                        final movie = showtime.movie;
+                        if (movie == null) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ShowtimeSelectorPage(
+                              movie: movie,
+                              showtime: showtime,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

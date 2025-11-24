@@ -37,12 +37,25 @@ class _CinemasListViewState extends State<CinemasListView> {
   bool _locationError = false;
   bool _locationLoading = false;
   final Map<int, Future<double?>> _distanceFutures = {};
+  late List<CinemaEntity> _sortedCinemas;
 
   @override
   void initState() {
     super.initState();
+    _sortedCinemas = List.of(widget.cinemas);
     if (widget.showDistance && widget.cinemas.isNotEmpty) {
       _initLocation();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CinemasListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cinemas != oldWidget.cinemas) {
+      _sortedCinemas = List.of(widget.cinemas);
+      if (_userLocation != null && widget.showDistance) {
+        _sortCinemasByDistance();
+      }
     }
   }
 
@@ -57,6 +70,7 @@ class _CinemasListViewState extends State<CinemasListView> {
         _userLocation = loc;
         _locationLoading = false;
       });
+      await _sortCinemasByDistance();
     } catch (_) {
       setState(() {
         _locationError = true;
@@ -97,6 +111,27 @@ class _CinemasListViewState extends State<CinemasListView> {
     }
   }
 
+  Future<void> _sortCinemasByDistance() async {
+    if (!mounted || _userLocation == null) return;
+    final entries = await Future.wait(
+      widget.cinemas.map(
+        (cinema) async => MapEntry(cinema.id, await _distanceForCinema(cinema)),
+      ),
+    );
+    final distanceMap = Map.fromEntries(entries);
+    setState(() {
+      _sortedCinemas = List.of(widget.cinemas);
+      _sortedCinemas.sort((a, b) {
+        final da = distanceMap[a.id];
+        final db = distanceMap[b.id];
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return da.compareTo(db);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
@@ -119,7 +154,7 @@ class _CinemasListViewState extends State<CinemasListView> {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemBuilder: (context, index) {
-              final cinema = widget.cinemas[index];
+              final cinema = _sortedCinemas[index];
               return FutureBuilder<double?>(
                 future: _distanceForCinema(cinema),
                 builder: (context, snapshot) {
@@ -132,7 +167,7 @@ class _CinemasListViewState extends State<CinemasListView> {
               );
             },
             separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemCount: widget.cinemas.length,
+            itemCount: _sortedCinemas.length,
           ),
         ),
       ],

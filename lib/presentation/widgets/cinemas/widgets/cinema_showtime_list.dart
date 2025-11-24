@@ -10,10 +10,12 @@ class CinemaShowtimeList extends StatefulWidget {
     super.key,
     required this.showtimes,
     required this.isLoading,
+    this.onShowtimeTap,
   });
 
   final List<ShowtimeEntity> showtimes;
   final bool isLoading;
+  final ValueChanged<ShowtimeEntity>? onShowtimeTap;
 
   @override
   State<CinemaShowtimeList> createState() => _CinemaShowtimeListState();
@@ -65,6 +67,7 @@ class _CinemaShowtimeListState extends State<CinemaShowtimeList> {
               return _MovieScheduleCard(
                 movie: item.movie,
                 showtimes: item.showtimes,
+                onShowtimeTap: widget.onShowtimeTap,
               );
             },
             separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -155,10 +158,15 @@ class _MovieSchedule {
 }
 
 class _MovieScheduleCard extends StatelessWidget {
-  const _MovieScheduleCard({required this.movie, required this.showtimes});
+  const _MovieScheduleCard({
+    required this.movie,
+    required this.showtimes,
+    this.onShowtimeTap,
+  });
 
   final MovieEntity movie;
   final List<ShowtimeEntity> showtimes;
+  final ValueChanged<ShowtimeEntity>? onShowtimeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -216,6 +224,7 @@ class _MovieScheduleCard extends StatelessWidget {
                       .map(
                         (show) => _TimePill(
                           label: timeFormat.format(show.startTime),
+                          onTap: onShowtimeTap != null ? () => onShowtimeTap!(show) : null,
                         ),
                       )
                       .toList(),
@@ -290,24 +299,29 @@ class _Tag extends StatelessWidget {
 }
 
 class _TimePill extends StatelessWidget {
-  const _TimePill({required this.label});
+  const _TimePill({required this.label, this.onTap});
 
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF8D4CE8),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF8D4CE8),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
         ),
       ),
     );
