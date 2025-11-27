@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 
 import '../../presentation/widgets/navbar_widget.dart';
 import 'account_page.dart';
+import 'chat_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -25,9 +25,9 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Khám phá nhanh',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
           _FeatureCard(
@@ -46,13 +46,20 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openPage(context, const ChatPage()),
+        backgroundColor: Colors.deepPurple,
+        child: CircleAvatar(
+          radius: 24,
+          backgroundImage: const AssetImage('assets/images/avatarchatbox.jpg'),
+          backgroundColor: Colors.transparent,
+        ),
+      ),
     );
   }
 
   void _openPage(BuildContext context, Widget page) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 }
 
@@ -110,15 +117,15 @@ class _FeatureCard extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.black54,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                     ),
                   ],
                 ),

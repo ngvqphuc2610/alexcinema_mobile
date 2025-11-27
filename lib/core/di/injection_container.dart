@@ -43,6 +43,11 @@ import '../../domain/services/screen_service.dart';
 import '../../domain/services/screen_type_service.dart';
 import '../../domain/services/showtime_service.dart';
 import '../../domain/services/user_service.dart';
+import '../../domain/services/gemini_service.dart';
+import '../../domain/services/speech_service.dart';
+import '../../domain/services/rag_service.dart';
+import '../../data/datasources/rag_remote_data_source.dart';
+import '../../data/repositories/rag_repository.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
 import '../../presentation/bloc/cinema/cinema_bloc.dart';
 import '../../presentation/bloc/entertainment/entertainment_bloc.dart';
@@ -55,6 +60,7 @@ import '../../presentation/bloc/screen_type/screen_type_bloc.dart';
 import '../../presentation/bloc/showtime/showtime_bloc.dart';
 import '../../presentation/bloc/two_factor/two_factor_cubit.dart';
 import '../../presentation/bloc/user/user_bloc.dart';
+import '../../presentation/bloc/chat/chat_cubit.dart';
 import '../../data/datasources/two_factor_remote_data_source.dart';
 import '../../data/datasources/payment_method_remote_data_source.dart';
 import '../../data/datasources/payment_remote_data_source.dart';
@@ -143,6 +149,9 @@ void _registerDataSources() {
   sl.registerLazySingleton<PaymentRemoteDataSource>(
     () => PaymentRemoteDataSource(sl()),
   );
+  sl.registerLazySingleton<RagRemoteDataSource>(
+    () => RagRemoteDataSource(sl()),
+  );
 }
 
 void _registerRepositories() {
@@ -179,6 +188,7 @@ void _registerRepositories() {
     () => PaymentMethodRepository(sl()),
   );
   sl.registerLazySingleton<PaymentRepository>(() => PaymentRepository(sl()));
+  sl.registerLazySingleton<RagRepository>(() => RagRepository(sl()));
 }
 
 void _registerServices() {
@@ -201,6 +211,13 @@ void _registerServices() {
     () => PaymentMethodService(sl()),
   );
   sl.registerLazySingleton<PaymentService>(() => PaymentService(sl()));
+
+  // AI & Speech Services
+  sl.registerLazySingleton<RagService>(() => RagService(sl()));
+  sl.registerLazySingleton<GeminiService>(
+    () => GeminiService(ragService: sl()),
+  );
+  sl.registerLazySingleton<SpeechService>(() => SpeechService());
 }
 
 void _registerBlocs() {
@@ -217,6 +234,7 @@ void _registerBlocs() {
   sl.registerFactory<MembershipBloc>(() => MembershipBloc(sl()));
   sl.registerFactory<PaymentMethodCubit>(() => PaymentMethodCubit(sl()));
   sl.registerFactory<PaymentCubit>(() => PaymentCubit(sl(), sl()));
+  sl.registerFactory<ChatCubit>(() => ChatCubit(sl(), sl()));
 }
 
 String _resolveBaseUrl() {

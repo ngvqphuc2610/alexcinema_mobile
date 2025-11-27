@@ -36,6 +36,16 @@ const VNPAY_RETURN_CONFIG = {
   key: 'VNP_RETURN_URL',
 };
 
+const MOMO_RETURN_CONFIG = {
+  path: API_ENV_PATH,
+  key: 'MOMO_RETURN_URL',
+};
+
+const MOMO_NOTIFY_CONFIG = {
+  path: API_ENV_PATH,
+  key: 'MOMO_NOTIFY_URL',
+};
+
 async function fetchHttpsTunnel() {
   const response = await fetchImpl(NGROK_API);
 
@@ -101,6 +111,16 @@ function updateEnvWithUrl(publicUrl) {
   const vnpReturnUrl = `${apiUrl}/payments/vnpay/return`;
   updateEnvFile(VNPAY_RETURN_CONFIG.path, VNPAY_RETURN_CONFIG.key, vnpReturnUrl);
   console.log(`Updated ${VNPAY_RETURN_CONFIG.path} with ${VNPAY_RETURN_CONFIG.key}=${vnpReturnUrl}`);
+
+  // Update MOMO_RETURN_URL with ngrok URL
+  const momoReturnUrl = `${apiUrl}/payments/momo/return`;
+  updateEnvFile(MOMO_RETURN_CONFIG.path, MOMO_RETURN_CONFIG.key, momoReturnUrl);
+  console.log(`Updated ${MOMO_RETURN_CONFIG.path} with ${MOMO_RETURN_CONFIG.key}=${momoReturnUrl}`);
+
+  // Update MOMO_NOTIFY_URL with ngrok URL
+  const momoNotifyUrl = `${apiUrl}/payments/momo/callback`;
+  updateEnvFile(MOMO_NOTIFY_CONFIG.path, MOMO_NOTIFY_CONFIG.key, momoNotifyUrl);
+  console.log(`Updated ${MOMO_NOTIFY_CONFIG.path} with ${MOMO_NOTIFY_CONFIG.key}=${momoNotifyUrl}`);
 
   return apiUrl;
 }

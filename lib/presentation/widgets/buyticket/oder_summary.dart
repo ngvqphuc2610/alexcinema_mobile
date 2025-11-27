@@ -433,6 +433,12 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         amount: amount,
         description: widget.movieTitle,
       );
+    } else if (methodCode == 'MOMO') {
+      context.read<PaymentCubit>().payWithMoMo(
+        showtimeId: widget.showtimeId,
+        amount: amount,
+        description: widget.movieTitle,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Chưa hỗ trợ phương thức $methodCode')),

@@ -5,6 +5,8 @@ import { CreateZaloPayOrderDto } from './dto/create-zalopay-order.dto';
 import { ZaloPayCallbackDto } from './dto/zalopay-callback.dto';
 import { CreateVNPayOrderDto } from './dto/create-vnpay-order.dto';
 import { VNPayCallbackDto } from './dto/vnpay-callback.dto';
+import { CreateMoMoOrderDto } from './dto/create-momo-order.dto';
+import { MoMoCallbackDto } from './dto/momo-callback.dto';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -88,6 +90,48 @@ export class PaymentsController {
 
     // Redirect to deep link
     const deepLink = `alexcinema://payment-result?txnref=${query.vnp_TxnRef || ''}&status=${query.vnp_ResponseCode || ''}&amount=${query.vnp_Amount || ''}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="refresh" content="0;url=${deepLink}">
+        <title>Redirecting...</title>
+      </head>
+      <body>
+        <p>Redirecting to app...</p>
+        <script>
+          window.location.href = '${deepLink}';
+          setTimeout(() => {
+            document.body.innerHTML = '<p>Please return to the app manually.</p>';
+          }, 2000);
+        </script>
+      </body>
+      </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  }
+
+  @Post('momo/order')
+  createMoMoOrder(@Body() dto: CreateMoMoOrderDto) {
+    return this.paymentsService.createMoMoOrder(dto);
+  }
+
+  @Post('momo/callback')
+  handleMoMoCallback(@Body() body: MoMoCallbackDto) {
+    return this.paymentsService.handleMoMoCallback(body);
+  }
+
+  @Get('momo/return')
+  handleMoMoReturn(@Query() query: MoMoCallbackDto, @Res() res: Response) {
+    // Process callback synchronously
+    this.paymentsService.handleMoMoCallback(query);
+
+    // Redirect to deep link
+    const deepLink = `alexcinema://payment-result?orderid=${query.orderId || ''}&resultcode=${query.resultCode || ''}&amount=${query.amount || ''}`;
 
     const html = `
       <!DOCTYPE html>

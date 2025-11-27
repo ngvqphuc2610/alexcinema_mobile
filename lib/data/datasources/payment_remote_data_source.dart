@@ -54,6 +54,30 @@ class PaymentRemoteDataSource {
     return VNPayOrderResponseDto.fromJson(map);
   }
 
+  Future<MoMoOrderResponseDto> createMoMoOrder({
+    required int bookingId,
+    double? amount,
+    String? description,
+    String? orderInfo,
+  }) async {
+    final response = await _client.post(
+      'payments/momo/order',
+      body: {
+        'bookingId': bookingId,
+        if (amount != null) 'amount': amount,
+        if (description != null && description.trim().isNotEmpty)
+          'description': description.trim(),
+        if (orderInfo != null && orderInfo.trim().isNotEmpty)
+          'orderInfo': orderInfo.trim(),
+      },
+    );
+    final map = ensureMap(
+      response,
+      errorMessage: 'Invalid MoMo order response',
+    );
+    return MoMoOrderResponseDto.fromJson(map);
+  }
+
   Future<PaymentStatusDto> fetchPaymentStatus(String transactionId) async {
     final response = await _client.get('payments/status/$transactionId');
     final map = ensureMap(

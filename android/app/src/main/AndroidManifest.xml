@@ -58,6 +58,17 @@
                     android:scheme="alexcinema"
                     android:host="payment-result" />
             </intent-filter>
+
+            <!-- ========= MOMO DEEPLINK ========= -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- MoMo app-to-app deeplink -->
+                <data
+                    android:scheme="partnerapp"
+                    android:host="alexcinema" />
+            </intent-filter>
         </activity>
 
         <!-- ========= ZALOPAY CONFIG (META-DATA) ========= -->

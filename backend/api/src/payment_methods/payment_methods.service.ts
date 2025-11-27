@@ -99,6 +99,24 @@ export class PaymentMethodsService {
     });
   }
 
+  async ensureMoMoMethod() {
+    return this.prisma.payment_methods.upsert({
+      where: { method_code: 'MOMO' },
+      update: {
+        method_name: 'MoMo',
+        description: 'Thanh toan qua MoMo',
+        is_active: true,
+      },
+      create: {
+        method_code: 'MOMO',
+        method_name: 'MoMo',
+        description: 'Thanh toan nhanh chong qua momo',
+        is_active: true,
+        display_order: 3,
+      },
+    });
+  }
+
   private toCreateInput(
     dto: CreatePaymentMethodDto,
     code: string,
