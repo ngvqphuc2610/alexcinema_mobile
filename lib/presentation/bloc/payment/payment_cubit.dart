@@ -30,7 +30,8 @@ class PaymentCubit extends Cubit<PaymentState> {
       state.copyWith(
         status: PaymentFlowStatus.creatingOrder,
         errorMessage: null,
-        order: null,
+        zaloOrder: null,
+        vnpayOrder: null,
         latestStatus: null,
       ),
     );
@@ -51,7 +52,9 @@ class PaymentCubit extends Cubit<PaymentState> {
         amount: amount,
         description: description,
       );
-      emit(state.copyWith(status: PaymentFlowStatus.redirecting, order: order));
+      emit(
+        state.copyWith(status: PaymentFlowStatus.redirecting, zaloOrder: order),
+      );
 
       final payUrl = order.payUrl ?? order.orderUrl;
       if (payUrl == null || payUrl.isEmpty) {
@@ -77,12 +80,81 @@ class PaymentCubit extends Cubit<PaymentState> {
     }
   }
 
+  Future<void> payWithVNPay({
+    required int showtimeId,
+    required double amount,
+    int? userId,
+    String? description,
+    String? bankCode,
+  }) async {
+    await _stopPolling();
+    emit(
+      state.copyWith(
+        status: PaymentFlowStatus.creatingOrder,
+        errorMessage: null,
+        zaloOrder: null,
+        vnpayOrder: null,
+        latestStatus: null,
+      ),
+    );
+
+    try {
+      // Step 1: Create booking first
+      final bookingResponse = await _bookingService.createBooking(
+        showtimeId: showtimeId,
+        totalAmount: amount,
+        userId: userId,
+      );
+
+      final bookingId = bookingResponse.idBooking;
+
+      // Step 2: Create VNPay order with the booking ID
+      final order = await _service.createVNPayOrder(
+        bookingId: bookingId,
+        amount: amount,
+        description: description,
+        bankCode: bankCode,
+        locale: 'vn',
+      );
+      emit(
+        state.copyWith(
+          status: PaymentFlowStatus.redirecting,
+          vnpayOrder: order,
+        ),
+      );
+
+      final payUrl = order.paymentUrl;
+      if (payUrl.isEmpty) {
+        throw Exception('Không có đường dẫn thanh toán');
+      }
+
+      final launched = await launchUrlString(
+        payUrl,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Không mở được ứng dụng thanh toán');
+      }
+
+      _startPolling(order.txnRef);
+    } catch (error) {
+      emit(
+        state.copyWith(
+          status: PaymentFlowStatus.failure,
+          errorMessage: mapErrorMessage(error),
+        ),
+      );
+    }
+  }
+
   Future<void> refreshStatus({String? transactionId}) async {
-    final tx =
-        transactionId ??
-        state.order?.appTransId ??
-        state.latestStatus?.transactionId;
-    if (tx == null || tx.isEmpty) return;
+    final tx = transactionId ?? state.transactionId;
+    print('RefreshStatus called with transactionId: $transactionId'); // Debug
+    print('Final tx to fetch: $tx'); // Debug
+    if (tx == null || tx.isEmpty) {
+      print('No transaction ID available, skipping refresh'); // Debug
+      return;
+    }
     await _fetchStatus(tx, manual: true);
   }
 
@@ -97,8 +169,12 @@ class PaymentCubit extends Cubit<PaymentState> {
   }
 
   Future<void> _fetchStatus(String transactionId, {bool manual = false}) async {
+    print('Fetching status for transaction: $transactionId'); // Debug
     try {
       final status = await _service.getPaymentStatus(transactionId);
+      print('Payment status received: ${status.status}'); // Debug
+      print('Full status object: $status'); // Debug
+
       final normalized = status.status.toLowerCase();
       if (normalized == 'success' || normalized == 'failed') {
         await _stopPolling();

@@ -18,6 +18,22 @@ class PaymentRepository {
     );
   }
 
+  Future<VNPayOrderResponseDto> createVNPayOrder({
+    required int bookingId,
+    double? amount,
+    String? description,
+    String? bankCode,
+    String? locale,
+  }) {
+    return _remoteDataSource.createVNPayOrder(
+      bookingId: bookingId,
+      amount: amount,
+      description: description,
+      bankCode: bankCode,
+      locale: locale,
+    );
+  }
+
   Future<PaymentStatusDto> getPaymentStatus(String transactionId) {
     return _remoteDataSource.fetchPaymentStatus(transactionId);
   }

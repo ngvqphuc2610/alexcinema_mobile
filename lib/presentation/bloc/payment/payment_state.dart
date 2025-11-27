@@ -13,13 +13,15 @@ enum PaymentFlowStatus {
 class PaymentState {
   const PaymentState({
     this.status = PaymentFlowStatus.idle,
-    this.order,
+    this.zaloOrder,
+    this.vnpayOrder,
     this.latestStatus,
     this.errorMessage,
   });
 
   final PaymentFlowStatus status;
-  final ZaloPayOrderResponseDto? order;
+  final ZaloPayOrderResponseDto? zaloOrder;
+  final VNPayOrderResponseDto? vnpayOrder;
   final PaymentStatusDto? latestStatus;
   final String? errorMessage;
 
@@ -28,16 +30,23 @@ class PaymentState {
       status == PaymentFlowStatus.redirecting ||
       status == PaymentFlowStatus.polling;
 
+  String? get transactionId =>
+      latestStatus?.transactionId ??
+      zaloOrder?.appTransId ??
+      vnpayOrder?.txnRef;
+
   PaymentState copyWith({
     PaymentFlowStatus? status,
-    ZaloPayOrderResponseDto? order,
+    ZaloPayOrderResponseDto? zaloOrder,
+    VNPayOrderResponseDto? vnpayOrder,
     PaymentStatusDto? latestStatus,
     String? errorMessage,
     bool clearError = false,
   }) {
     return PaymentState(
       status: status ?? this.status,
-      order: order ?? this.order,
+      zaloOrder: zaloOrder ?? this.zaloOrder,
+      vnpayOrder: vnpayOrder ?? this.vnpayOrder,
       latestStatus: latestStatus ?? this.latestStatus,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );

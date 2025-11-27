@@ -11,7 +11,7 @@ export interface PaymentMethodQueryOptions {
 
 @Injectable()
 export class PaymentMethodsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findAll(options: PaymentMethodQueryOptions = {}) {
     const methods = await this.prisma.payment_methods.findMany({
@@ -77,6 +77,24 @@ export class PaymentMethodsService {
         description: 'Thanh toan qua ZaloPay',
         is_active: true,
         display_order: 1,
+      },
+    });
+  }
+
+  async ensureVNPayMethod() {
+    return this.prisma.payment_methods.upsert({
+      where: { method_code: 'VNPAY' },
+      update: {
+        method_name: 'VNPay',
+        description: 'Thanh toan qua VNPay',
+        is_active: true,
+      },
+      create: {
+        method_code: 'VNPAY',
+        method_name: 'VNPay',
+        description: 'Thanh toan qua VNPay',
+        is_active: true,
+        display_order: 2,
       },
     });
   }
