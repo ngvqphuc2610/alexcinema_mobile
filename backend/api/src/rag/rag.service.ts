@@ -94,16 +94,16 @@ export class RagService {
                 ).join(', ') || 'N/A';
 
                 sections.push(`
-Tên rạp: ${cinema.name}
-Địa chỉ: ${cinema.address}
-Thành phố: ${cinema.city}
-Mô tả: ${cinema.description || 'N/A'}
-Số điện thoại: ${cinema.contactNumber || 'N/A'}
-Email: ${cinema.email || 'N/A'}
-Số phòng chiếu: ${cinema.screenCount}
-Loại phòng: ${cinema.screenTypes?.join(', ') || 'N/A'}
-Giờ mở cửa: ${operationHours}
-        `.trim());
+                                Tên rạp: ${cinema.name}
+                                Địa chỉ: ${cinema.address}
+                                Thành phố: ${cinema.city}
+                                Mô tả: ${cinema.description || 'N/A'}
+                                Số điện thoại: ${cinema.contactNumber || 'N/A'}
+                                Email: ${cinema.email || 'N/A'}
+                                Số phòng chiếu: ${cinema.screenCount}
+                                Loại phòng: ${cinema.screenTypes?.join(', ') || 'N/A'}
+                                Giờ mở cửa: ${operationHours}
+                                `.trim());
             });
         }
 
@@ -113,14 +113,14 @@ Giờ mở cửa: ${operationHours}
             movieResults.forEach(result => {
                 const movie = result.payload;
                 sections.push(`
-Tên phim: ${movie.title}
-Thể loại: ${movie.genres || 'N/A'}
-Đạo diễn: ${movie.director || 'N/A'}
-Diễn viên: ${movie.actors || 'N/A'}
-Mô tả: ${movie.description || 'N/A'}
-Thời lượng: ${movie.duration || 'N/A'} phút
-Ngôn ngữ: ${movie.language || 'N/A'}
-Quốc gia: ${movie.country || 'N/A'}
+                            Tên phim: ${movie.title}
+                            Thể loại: ${movie.genres || 'N/A'}
+                            Đạo diễn: ${movie.director || 'N/A'}
+                            Diễn viên: ${movie.actors || 'N/A'}
+                            Mô tả: ${movie.description || 'N/A'}
+                            Thời lượng: ${movie.duration || 'N/A'} phút
+                            Ngôn ngữ: ${movie.language || 'N/A'}
+                            Quốc gia: ${movie.country || 'N/A'}
         `.trim());
             });
         }
@@ -131,15 +131,15 @@ Quốc gia: ${movie.country || 'N/A'}
             showtimeResults.forEach(result => {
                 const showtime = result.payload;
                 sections.push(`
-Phim: ${showtime.movieTitle}
-Rạp: ${showtime.cinemaName}
-Địa chỉ: ${showtime.cinemaAddress}
-Phòng: ${showtime.screenName}
-Giờ chiếu: ${new Date(showtime.startTime).toLocaleString('vi-VN')}
-Định dạng: ${showtime.format || '2D'}
-Ngôn ngữ: ${showtime.language || 'N/A'}
-Phụ đề: ${showtime.subtitle || 'N/A'}
-Giá vé: ${parseInt(showtime.price).toLocaleString('vi-VN')} VNĐ
+                        Phim: ${showtime.movieTitle}
+                        Rạp: ${showtime.cinemaName}
+                        Địa chỉ: ${showtime.cinemaAddress}
+                        Phòng: ${showtime.screenName}
+                        Giờ chiếu: ${new Date(showtime.startTime).toLocaleString('vi-VN')}
+                        Định dạng: ${showtime.format || '2D'}
+                        Ngôn ngữ: ${showtime.language || 'N/A'}
+                        Phụ đề: ${showtime.subtitle || 'N/A'}
+                        Giá vé: ${parseInt(showtime.price).toLocaleString('vi-VN')} VNĐ
         `.trim());
             });
         }
@@ -150,13 +150,13 @@ Giá vé: ${parseInt(showtime.price).toLocaleString('vi-VN')} VNĐ
             promotionResults.forEach(result => {
                 const promo = result.payload;
                 sections.push(`
-Tên: ${promo.title}
-Mô tả: ${promo.description || 'N/A'}
-Mã khuyến mãi: ${promo.promotionCode || 'N/A'}
-Giảm giá: ${promo.discountPercent || 0}%
-Giảm tiền: ${promo.discountAmount?.toLocaleString('vi-VN') || 0} VNĐ
-Thời gian: ${new Date(promo.startDate).toLocaleDateString('vi-VN')} - ${new Date(promo.endDate).toLocaleDateString('vi-VN')}
-Mua tối thiểu: ${promo.minPurchase?.toLocaleString('vi-VN') || 0} VNĐ
+                    Tên: ${promo.title}
+                    Mô tả: ${promo.description || 'N/A'}
+                    Mã khuyến mãi: ${promo.promotionCode || 'N/A'}
+                    Giảm giá: ${promo.discountPercent || 0}%
+                    Giảm tiền: ${promo.discountAmount?.toLocaleString('vi-VN') || 0} VNĐ
+                    Thời gian: ${new Date(promo.startDate).toLocaleDateString('vi-VN')} - ${new Date(promo.endDate).toLocaleDateString('vi-VN')}
+                    Mua tối thiểu: ${promo.minPurchase?.toLocaleString('vi-VN') || 0} VNĐ
         `.trim());
             });
         }

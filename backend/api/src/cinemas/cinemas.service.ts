@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCinemaDto } from './dto/create-cinema.dto';
 import { UpdateCinemaDto } from './dto/update-cinema.dto';
@@ -14,7 +15,10 @@ export interface CinemaQueryParams {
 
 @Injectable()
 export class CinemasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) { }
 
   async create(dto: CreateCinemaDto) {
     const data: Prisma.cinemasUncheckedCreateInput = {
@@ -28,7 +32,12 @@ export class CinemasService {
       status: dto.status ? dto.status.trim() : undefined,
     };
 
-    return this.prisma.cinemas.create({ data });
+    const cinema = await this.prisma.cinemas.create({ data });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('cinema.created', { id: cinema.id_cinema });
+
+    return cinema;
   }
 
   async findAll(params: CinemaQueryParams = {}) {
@@ -39,9 +48,9 @@ export class CinemasService {
       status: params.status?.trim(),
       OR: params.search
         ? [
-            { cinema_name: { contains: params.search } },
-            { address: { contains: params.search } },
-          ]
+          { cinema_name: { contains: params.search } },
+          { address: { contains: params.search } },
+        ]
         : undefined,
     };
 
@@ -101,15 +110,25 @@ export class CinemasService {
       status: dto.status ? dto.status.trim() : undefined,
     };
 
-    return this.prisma.cinemas.update({
+    const cinema = await this.prisma.cinemas.update({
       where: { id_cinema: id },
       data,
     });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('cinema.updated', { id: cinema.id_cinema });
+
+    return cinema;
   }
 
   async remove(id: number) {
     await this.ensureExists(id);
-    return this.prisma.cinemas.delete({ where: { id_cinema: id } });
+    const cinema = await this.prisma.cinemas.delete({ where: { id_cinema: id } });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('cinema.deleted', { id });
+
+    return cinema;
   }
 
   private async ensureExists(id: number) {

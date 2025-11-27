@@ -6,6 +6,7 @@ import { RagService } from './rag.service';
 import { QdrantService } from './qdrant.service';
 import { EmbeddingsService } from './embeddings.service';
 import { DocumentIndexerService } from './document-indexer.service';
+import { RagEventsListener } from './rag-events.listener';
 
 @Module({
     imports: [HttpModule, ConfigModule],
@@ -15,6 +16,7 @@ import { DocumentIndexerService } from './document-indexer.service';
         QdrantService,
         EmbeddingsService,
         DocumentIndexerService,
+        RagEventsListener,
     ],
     exports: [RagService, DocumentIndexerService],
 })

@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, promotions } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
@@ -13,7 +14,10 @@ export interface PromotionQueryParams {
 
 @Injectable()
 export class PromotionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) { }
 
   async create(dto: CreatePromotionDto): Promise<promotions> {
     const existing = await this.prisma.promotions.findUnique({
@@ -24,7 +28,12 @@ export class PromotionsService {
     }
 
     const data = this.toCreateInput(dto);
-    return this.prisma.promotions.create({ data });
+    const promotion = await this.prisma.promotions.create({ data });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('promotion.created', { id: promotion.id_promotions });
+
+    return promotion;
   }
 
   async findAll(params: PromotionQueryParams = {}) {
@@ -34,15 +43,15 @@ export class PromotionsService {
     const where: Prisma.promotionsWhereInput =
       params.search && params.search.trim().length > 0
         ? {
-            OR: [
-              { promotion_code: { contains: params.search } },
-              { title: { contains: params.search } },
-            ],
-            status: params.status?.trim(),
-          }
+          OR: [
+            { promotion_code: { contains: params.search } },
+            { title: { contains: params.search } },
+          ],
+          status: params.status?.trim(),
+        }
         : {
-            status: params.status?.trim(),
-          };
+          status: params.status?.trim(),
+        };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.promotions.findMany({
@@ -87,15 +96,25 @@ export class PromotionsService {
     }
 
     const data = this.toUpdateInput(dto);
-    return this.prisma.promotions.update({
+    const promotion = await this.prisma.promotions.update({
       where: { id_promotions: id },
       data,
     });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('promotion.updated', { id: promotion.id_promotions });
+
+    return promotion;
   }
 
   async remove(id: number) {
     await this.ensureExists(id);
-    return this.prisma.promotions.delete({ where: { id_promotions: id } });
+    const promotion = await this.prisma.promotions.delete({ where: { id_promotions: id } });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('promotion.deleted', { id });
+
+    return promotion;
   }
 
   private async ensureExists(id: number) {
