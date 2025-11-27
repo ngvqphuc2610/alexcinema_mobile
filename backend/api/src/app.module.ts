@@ -42,6 +42,7 @@ import { TicketTypeModule } from './ticket_type/ticket_type.module';
 import { UserLogsModule } from './user_logs/user_logs.module';
 import { UploadModule } from './upload/upload.module';
 import { OtpModule } from './otp/otp.module';
+import { RagModule } from './rag/rag.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { OtpModule } from './otp/otp.module';
     UserLogsModule,
     UploadModule,
     OtpModule,
+    RagModule,
   ],
   controllers: [AppController],
   providers: [AppService],
