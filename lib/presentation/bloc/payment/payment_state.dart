@@ -15,6 +15,7 @@ class PaymentState {
     this.status = PaymentFlowStatus.idle,
     this.zaloOrder,
     this.vnpayOrder,
+    this.momoOrder,
     this.latestStatus,
     this.errorMessage,
   });
@@ -22,6 +23,7 @@ class PaymentState {
   final PaymentFlowStatus status;
   final ZaloPayOrderResponseDto? zaloOrder;
   final VNPayOrderResponseDto? vnpayOrder;
+  final MoMoOrderResponseDto? momoOrder;
   final PaymentStatusDto? latestStatus;
   final String? errorMessage;
 
@@ -33,12 +35,14 @@ class PaymentState {
   String? get transactionId =>
       latestStatus?.transactionId ??
       zaloOrder?.appTransId ??
-      vnpayOrder?.txnRef;
+      vnpayOrder?.txnRef ??
+      momoOrder?.orderId;
 
   PaymentState copyWith({
     PaymentFlowStatus? status,
     ZaloPayOrderResponseDto? zaloOrder,
     VNPayOrderResponseDto? vnpayOrder,
+    MoMoOrderResponseDto? momoOrder,
     PaymentStatusDto? latestStatus,
     String? errorMessage,
     bool clearError = false,
@@ -47,6 +51,7 @@ class PaymentState {
       status: status ?? this.status,
       zaloOrder: zaloOrder ?? this.zaloOrder,
       vnpayOrder: vnpayOrder ?? this.vnpayOrder,
+      momoOrder: momoOrder ?? this.momoOrder,
       latestStatus: latestStatus ?? this.latestStatus,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );

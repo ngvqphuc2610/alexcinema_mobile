@@ -34,6 +34,20 @@ class PaymentService {
     );
   }
 
+  Future<MoMoOrderResponseDto> createMoMoOrder({
+    required int bookingId,
+    double? amount,
+    String? description,
+    String? orderInfo,
+  }) {
+    return _repository.createMoMoOrder(
+      bookingId: bookingId,
+      amount: amount,
+      description: description,
+      orderInfo: orderInfo,
+    );
+  }
+
   Future<PaymentStatusDto> getPaymentStatus(String transactionId) {
     return _repository.getPaymentStatus(transactionId);
   }

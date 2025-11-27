@@ -11,6 +11,8 @@ import { CreateZaloPayOrderDto } from './dto/create-zalopay-order.dto';
 import { ZaloPayCallbackDto } from './dto/zalopay-callback.dto';
 import { CreateVNPayOrderDto } from './dto/create-vnpay-order.dto';
 import { VNPayCallbackDto } from './dto/vnpay-callback.dto';
+import { CreateMoMoOrderDto } from './dto/create-momo-order.dto';
+import { MoMoCallbackDto } from './dto/momo-callback.dto';
 
 interface ZaloConfig {
   appId: number;
@@ -27,6 +29,15 @@ interface VNPayConfig {
   url: string;
   returnUrl: string;
   apiUrl?: string;
+}
+
+interface MoMoConfig {
+  partnerCode: string;
+  accessKey: string;
+  secretKey: string;
+  endpoint: string;
+  returnUrl: string;
+  notifyUrl: string;
 }
 
 @Injectable()
@@ -670,5 +681,193 @@ export class PaymentsService {
     const minutes = pad(date.getMinutes());
     const seconds = pad(date.getSeconds());
     return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  }
+
+  // ==================== MoMo Methods ====================
+
+  async createMoMoOrder(dto: CreateMoMoOrderDto) {
+    const { partnerCode, accessKey, secretKey, endpoint, returnUrl, notifyUrl } = this.getMoMoConfig();
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id_booking: dto.bookingId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.payment_status === 'paid') {
+      throw new BadRequestException('Booking has already been paid');
+    }
+
+    const method = await this.paymentMethodsService.ensureMoMoMethod();
+    const amount = dto.amount ?? Number(booking.total_amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Invalid amount for payment');
+    }
+
+    const orderId = this.buildAppTransId(booking.id_booking);
+    const requestId = orderId;
+    const orderInfo = dto.orderInfo ?? `Thanh toan ve xem phim #${booking.booking_code ?? booking.id_booking}`;
+    const requestType = 'captureWallet';
+    const extraData = Buffer.from(JSON.stringify({ bookingId: booking.id_booking })).toString('base64');
+
+    // Create signature
+    const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${notifyUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${returnUrl}&requestId=${requestId}&requestType=${requestType}`;
+    const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+    const payload = {
+      partnerCode,
+      partnerName: 'Alex Cinema',
+      storeId: 'AlexCinema',
+      requestId,
+      amount,
+      orderId,
+      orderInfo,
+      redirectUrl: returnUrl,
+      ipnUrl: notifyUrl,
+      lang: 'vi',
+      extraData,
+      requestType,
+      signature,
+    };
+
+    this.logger.log(`Creating MoMo order for transaction: ${orderId}`);
+    this.logger.log(`MoMo Signature: ${signature}`);
+
+    const response = await axios.post(`${endpoint}/v2/gateway/api/create`, payload, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const data = response.data ?? {};
+    this.logger.log(`MoMo response: ${JSON.stringify(data, null, 2)}`);
+
+    if (data.resultCode !== 0) {
+      throw new BadRequestException(
+        `MoMo error: ${data.message ?? 'Unknown error'}`,
+      );
+    }
+
+    const paymentPayload: Prisma.paymentsCreateInput = {
+      booking: { connect: { id_booking: booking.id_booking } },
+      method: { connect: { id_payment_method: method.id_payment_method } },
+      payment_method: method.method_code,
+      amount: new Prisma.Decimal(amount),
+      status: 'pending',
+      transaction_id: orderId,
+      provider_code: method.method_code,
+      provider_order_id: orderId,
+      provider_return_code: String(data.resultCode ?? ''),
+      provider_return_message: data.message ?? null,
+      provider_payload: data,
+      payment_details: JSON.stringify({ momoParams: payload }),
+    };
+
+    await this.prisma.$transaction([
+      this.prisma.payments.upsert({
+        where: { transaction_id: orderId },
+        create: paymentPayload,
+        update: paymentPayload,
+      }),
+      this.prisma.bookings.update({
+        where: { id_booking: booking.id_booking },
+        data: { payment_status: 'unpaid' },
+      }),
+    ]);
+
+    return {
+      orderId,
+      payUrl: data.payUrl,
+      deeplink: data.deeplink,
+      qrCodeUrl: data.qrCodeUrl,
+      amount,
+    };
+  }
+
+  async handleMoMoCallback(dto: MoMoCallbackDto) {
+    const { secretKey } = this.getMoMoConfig();
+    const signature = dto.signature;
+
+    this.logger.log(`MoMo Callback received for: ${dto.orderId}`);
+    this.logger.log(`MoMo Callback params: ${JSON.stringify(dto, null, 2)}`);
+
+    // Verify signature
+    const rawSignature = `accessKey=${this.getMoMoConfig().accessKey}&amount=${dto.amount}&extraData=${dto.extraData ?? ''}&message=${dto.message}&orderId=${dto.orderId}&orderInfo=${dto.orderInfo}&orderType=${dto.orderType}&partnerCode=${dto.partnerCode}&payType=${dto.payType}&requestId=${dto.requestId}&responseTime=${dto.responseTime}&resultCode=${dto.resultCode}&transId=${dto.transId}`;
+    const checkSignature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+    this.logger.log(`MoMo Received Signature: ${signature}`);
+    this.logger.log(`MoMo Computed Signature: ${checkSignature}`);
+
+    if (signature !== checkSignature) {
+      this.logger.warn('MoMo callback signature mismatch');
+      this.logger.warn(`Expected: ${checkSignature}`);
+      this.logger.warn(`Received: ${signature}`);
+      return { resultCode: 97, message: 'Invalid Signature' };
+    }
+
+    const orderId = dto.orderId;
+    const resultCode = dto.resultCode;
+    const amount = Number(dto.amount);
+
+    // resultCode '0' means success
+    const isSuccess = resultCode === '0';
+    const status = isSuccess ? 'completed' : 'pending';
+
+    const method = await this.paymentMethodsService.ensureMoMoMethod();
+
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.payments.findUnique({
+        where: { transaction_id: orderId },
+      });
+
+      if (!existing) {
+        this.logger.warn(`Payment not found for MoMo callback: ${orderId}`);
+        return;
+      }
+
+      await tx.payments.update({
+        where: { transaction_id: orderId },
+        data: {
+          status,
+          provider_trans_id: dto.transId,
+          provider_return_code: resultCode,
+          provider_return_message: dto.message,
+          provider_payload: dto as any,
+          payment_details: JSON.stringify(dto),
+          payment_date: new Date(),
+        },
+      });
+
+      if (existing.id_booking && status === 'completed') {
+        await tx.bookings.update({
+          where: { id_booking: existing.id_booking },
+          data: {
+            payment_status: 'paid',
+            booking_status: 'confirmed',
+          },
+        });
+      }
+    });
+
+    return { resultCode: 0, message: 'Confirm Success' };
+  }
+
+  private getMoMoConfig(): MoMoConfig {
+    const partnerCode = this.configService.get<string>('MOMO_PARTNER_CODE') ?? '';
+    const accessKey = this.configService.get<string>('MOMO_ACCESS_KEY') ?? '';
+    const secretKey = this.configService.get<string>('MOMO_SECRET_KEY') ?? '';
+    const endpoint = this.configService.get<string>('MOMO_ENDPOINT') ?? 'https://test-payment.momo.vn';
+    const returnUrl =
+      this.configService.get<string>('MOMO_RETURN_URL') ??
+      `${this.configService.get<string>('API_URL') ?? ''}/payments/momo/return`;
+    const notifyUrl =
+      this.configService.get<string>('MOMO_NOTIFY_URL') ??
+      `${this.configService.get<string>('API_URL') ?? ''}/payments/momo/callback`;
+
+    if (!partnerCode || !accessKey || !secretKey) {
+      throw new BadRequestException('Missing MoMo configuration (Partner Code / Access Key / Secret Key)');
+    }
+
+    return { partnerCode, accessKey, secretKey, endpoint, returnUrl, notifyUrl };
   }
 }

@@ -63,6 +63,40 @@ class VNPayOrderResponseDto {
   }
 }
 
+class MoMoOrderResponseDto {
+  MoMoOrderResponseDto({
+    required this.orderId,
+    required this.payUrl,
+    required this.amount,
+    this.deeplink,
+    this.qrCodeUrl,
+  });
+
+  final String orderId;
+  final String payUrl;
+  final double amount;
+  final String? deeplink;
+  final String? qrCodeUrl;
+
+  factory MoMoOrderResponseDto.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String && value.isNotEmpty) {
+        return double.tryParse(value) ?? 0;
+      }
+      return 0;
+    }
+
+    return MoMoOrderResponseDto(
+      orderId: (json['orderId'] ?? '').toString(),
+      payUrl: (json['payUrl'] ?? '').toString(),
+      amount: _toDouble(json['amount']),
+      deeplink: json['deeplink'] as String?,
+      qrCodeUrl: json['qrCodeUrl'] as String?,
+    );
+  }
+}
+
 class PaymentStatusDto {
   PaymentStatusDto({
     required this.transactionId,
