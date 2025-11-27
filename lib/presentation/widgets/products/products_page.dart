@@ -1,25 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/di/dependency_injection.dart';
 import '../../../data/models/entity/product_entity.dart';
 import '../../../domain/services/product_service.dart';
 import '../buyticket/booking_flow_shell.dart';
+import '../buyticket/oder_summary.dart';
 import 'card_products.dart';
 import 'grid_products.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({
     super.key,
+    required this.bookingId,
+    required this.showtimeId,
+    required this.cinemaName,
+    required this.showtime,
+    required this.screenName,
+    required this.movieTitle,
+    required this.posterUrl,
+    required this.durationText,
     this.selectedSeats = const [],
+    this.seatPrices = const {},
     this.ticketTotal = 0,
-    this.movieTitle,
-    this.showtimeLabel,
+    this.tags = const [],
   });
 
+  final int bookingId;
+  final int showtimeId;
+  final String cinemaName;
+  final DateTime showtime;
+  final String screenName;
+  final String movieTitle;
+  final String posterUrl;
+  final String durationText;
   final List<String> selectedSeats;
+  final Map<String, double> seatPrices;
   final double ticketTotal;
-  final String? movieTitle;
-  final String? showtimeLabel;
+  final List<String> tags;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -87,9 +105,10 @@ class _ProductsPageState extends State<ProductsPage> {
         ? '0 Ghế'
         : '${widget.selectedSeats.length} Ghế: ${widget.selectedSeats.join(', ')}';
     final productText = _selectedProductsSummary(totalItems);
-    final subtitle = widget.movieTitle != null && widget.showtimeLabel != null
-        ? '${widget.movieTitle} - ${widget.showtimeLabel}'
-        : widget.movieTitle ?? widget.showtimeLabel ?? 'Chọn sản phẩm kèm vé';
+    final showtimeFormatted = DateFormat(
+      'dd/MM/yyyy HH:mm',
+    ).format(widget.showtime);
+    final subtitle = '${widget.movieTitle} - $showtimeFormatted';
 
     return BookingFlowShell(
       title: 'Combo',
@@ -101,13 +120,7 @@ class _ProductsPageState extends State<ProductsPage> {
       ],
       primaryLabel: 'Tiếp tục',
       primaryEnabled: true,
-      onPrimaryAction: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Tổng cộng: ${combinedTotal.toStringAsFixed(0)} đ'),
-          ),
-        );
-      },
+      onPrimaryAction: () => _navigateToOrderSummary(context),
       child: _buildBody(),
     );
   }
@@ -217,5 +230,84 @@ class _ProductsPageState extends State<ProductsPage> {
       }
     }
     return parts.isEmpty ? 'Chưa chọn sản phẩm' : parts.join(', ');
+  }
+
+  void _navigateToOrderSummary(BuildContext context) {
+    // Convert selected seats to SeatSelection objects
+    final seatSelections = widget.selectedSeats
+        .map(
+          (seatCode) => SeatSelection(
+            code: seatCode,
+            price: widget.seatPrices[seatCode] ?? 0,
+          ),
+        )
+        .toList();
+
+    // Convert selected products to ConcessionSelection objects
+    final comboSelections = <ConcessionSelection>[];
+    for (final category in _categories) {
+      for (final product in category.products) {
+        final qty = _quantities[product.id] ?? 0;
+        if (qty > 0) {
+          comboSelections.add(
+            ConcessionSelection(
+              name: product.name,
+              price: product.price,
+              quantity: qty,
+              iconUrl: product.image,
+            ),
+          );
+        }
+      }
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => OrderSummaryPage(
+          bookingId: widget.bookingId,
+          showtimeId: widget.showtimeId,
+          cinemaName: widget.cinemaName,
+          showtime: widget.showtime,
+          screenName: widget.screenName,
+          movieTitle: widget.movieTitle,
+          posterUrl: widget.posterUrl,
+          durationText: widget.durationText,
+          tags: widget.tags,
+          seats: seatSelections,
+          combos: comboSelections,
+          onPaymentSucceeded: (status) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Thanh toán thành công! Vui lòng kiểm tra email.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          },
+          onPaymentFailed: (message) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Thanh toán thất bại: $message'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          },
+          onHoldExpired: () {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Hết thời gian giữ ghế. Vui lòng đặt lại.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

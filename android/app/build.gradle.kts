@@ -5,6 +5,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+
 android {
     namespace = "com.example.alexcinema"
     compileSdk = flutter.compileSdkVersion
@@ -37,7 +38,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    
 }
+
+// Remove manual ZaloPay SDK dependency - flutter_zalopay_sdk plugin includes it
+// dependencies {
+//     implementation(files("libs/zpdk-release-v3.1.aar"))
+// }
+
 
 flutter {
     source = "../.."

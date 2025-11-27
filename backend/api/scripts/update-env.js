@@ -21,6 +21,11 @@ const TARGET_ENV_CONFIGS = [
   },
 ];
 
+const ZALOPAY_CALLBACK_CONFIG = {
+  path: API_ENV_PATH,
+  key: 'ZP_CALLBACK_URL',
+};
+
 async function fetchHttpsTunnel() {
   const response = await fetchImpl(NGROK_API);
 
@@ -65,10 +70,18 @@ function updateEnvWithUrl(publicUrl) {
   }
 
   const apiUrl = `${publicUrl.replace(/\/$/, '')}/api`;
+
+  // Update API_URL and FLUTTER_API_URL
   TARGET_ENV_CONFIGS.forEach(({ path: envPath, key }) => {
     updateEnvFile(envPath, key, apiUrl);
     console.log(`Updated ${envPath} with ${key}=${apiUrl}`);
   });
+
+  // Update ZP_CALLBACK_URL with ngrok URL
+  const zpCallbackUrl = `${apiUrl}/payments/zalopay/callback`;
+  updateEnvFile(ZALOPAY_CALLBACK_CONFIG.path, ZALOPAY_CALLBACK_CONFIG.key, zpCallbackUrl);
+  console.log(`Updated ${ZALOPAY_CALLBACK_CONFIG.path} with ${ZALOPAY_CALLBACK_CONFIG.key}=${zpCallbackUrl}`);
+
   return apiUrl;
 }
 

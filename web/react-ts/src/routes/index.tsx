@@ -19,6 +19,8 @@ import StaffsPage from '../pages/staffs/StaffsPage';
 import ContactsPage from '../pages/contacts/ContactsPage';
 import ProductsPage from '../pages/products/ProductsPage';
 import ProductTypePage from '../pages/product_types/ProductTypePage';
+import PaymentMethodsPage from '../pages/payment_methods/PaymentMethodsPage';
+import PaymentsPage from '../pages/payments/PaymentsPage';
 
 const ProtectedRoute = () => {
   const { user, isLoading } = useAuth();
@@ -63,6 +65,8 @@ export const router = createBrowserRouter([
           { path: 'staff', element: <StaffsPage /> },
           { path: 'contacts', element: <ContactsPage /> },
           { path: 'product-types', element: <ProductTypePage /> },
+          { path: 'payment-methods', element: <PaymentMethodsPage /> },
+          { path: 'payments', element: <PaymentsPage /> },
         ],
       },
     ],

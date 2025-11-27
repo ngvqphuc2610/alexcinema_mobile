@@ -7,11 +7,7 @@ import '../products/products_page.dart';
 import 'ticket_type_selector.dart';
 
 class Seat {
-  Seat({
-    required this.id,
-    required this.type,
-    this.isBooked = false,
-  });
+  Seat({required this.id, required this.type, this.isBooked = false});
 
   final String id;
   final SeatType type;
@@ -38,7 +34,8 @@ class _SeatMapPageState extends State<SeatMapPage> {
   late final List<List<Seat?>> _layout;
   final Set<String> _selected = {};
 
-  int get _totalTickets => widget.ticketOptions.fold(0, (sum, opt) => sum + opt.quantity);
+  int get _totalTickets =>
+      widget.ticketOptions.fold(0, (sum, opt) => sum + opt.quantity);
 
   Map<SeatType, int> get _allowedByType {
     final map = <SeatType, int>{};
@@ -59,9 +56,9 @@ class _SeatMapPageState extends State<SeatMapPage> {
   }
 
   double get _totalPrice => widget.ticketOptions.fold(
-        0,
-        (sum, opt) => sum + opt.quantity * opt.price,
-      );
+    0,
+    (sum, opt) => sum + opt.quantity * opt.price,
+  );
 
   @override
   void initState() {
@@ -79,7 +76,13 @@ class _SeatMapPageState extends State<SeatMapPage> {
       [s('C01'), s('C02'), null, s('C03'), s('C04')],
       [s('D01'), s('D02'), null, s('D03'), s('D04')],
       [s('E01'), s('E02'), null, s('E03'), s('E04')],
-      [s('F01', type: SeatType.doubleSeat), null, null, null, s('F02', type: SeatType.doubleSeat)],
+      [
+        s('F01', type: SeatType.doubleSeat),
+        null,
+        null,
+        null,
+        s('F02', type: SeatType.doubleSeat),
+      ],
     ];
   }
 
@@ -121,12 +124,16 @@ class _SeatMapPageState extends State<SeatMapPage> {
 
   void _showInfo(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final timeLabel = TimeOfDay.fromDateTime(widget.showtime.startTime).format(context);
+    final timeLabel = TimeOfDay.fromDateTime(
+      widget.showtime.startTime,
+    ).format(context);
     final dateLabel =
         '${widget.showtime.showDate.day}/${widget.showtime.showDate.month}/${widget.showtime.showDate.year}';
 
@@ -144,13 +151,48 @@ class _SeatMapPageState extends State<SeatMapPage> {
           _showInfo('Chọn đủ số ghế đã mua.');
           return;
         }
+
+        // Build seat prices map
+        final seatPrices = <String, double>{};
+        for (final seatId in _selected) {
+          final seat = _flattenSeats().firstWhere((s) => s.id == seatId);
+          final ticketType = widget.ticketOptions.firstWhere(
+            (opt) => opt.seatType == seat.type,
+            orElse: () => widget.ticketOptions.first,
+          );
+          seatPrices[seatId] = ticketType.price;
+        }
+
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ProductsPage(
-              selectedSeats: _selected.toList()..sort(),
-              ticketTotal: _totalPrice,
+              bookingId: widget
+                  .showtime
+                  .id, // Using showtime ID as booking ID placeholder
+              showtimeId: widget.showtime.id,
+              cinemaName:
+                  widget.showtime.screen?.cinema?.cinemaName ??
+                  'Rạp chiếu phim',
+              showtime: DateTime(
+                widget.showtime.showDate.year,
+                widget.showtime.showDate.month,
+                widget.showtime.showDate.day,
+                widget.showtime.startTime.hour,
+                widget.showtime.startTime.minute,
+              ),
+              screenName: widget.showtime.screen?.screenName ?? 'Phòng chiếu',
               movieTitle: widget.movie.title,
-              showtimeLabel: '$timeLabel ${widget.showtime.showDate.day}/${widget.showtime.showDate.month}',
+              posterUrl:
+                  widget.movie.posterImage ?? widget.movie.bannerImage ?? '',
+              durationText: '${widget.movie.duration} phút',
+              tags: [
+                if (widget.movie.ageRestriction != null)
+                  widget.movie.ageRestriction!,
+                if (widget.movie.language != null) widget.movie.language!,
+              ],
+              selectedSeats: _selected.toList()..sort(),
+              seatPrices: seatPrices,
+              ticketTotal: _totalPrice,
             ),
           ),
         );
@@ -267,17 +309,16 @@ class _ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeLabel = TimeOfDay.fromDateTime(showtime.startTime).format(context);
+    final timeLabel = TimeOfDay.fromDateTime(
+      showtime.startTime,
+    ).format(context);
     final dateLabel =
         '${showtime.showDate.day}/${showtime.showDate.month}/${showtime.showDate.year}';
     return Column(
       children: [
         Text(
           showtime.screen?.cinema?.cinemaName ?? 'Rạp',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
@@ -323,7 +364,10 @@ class _Legend extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
           ),
-          Text(text, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
         ],
       );
     }

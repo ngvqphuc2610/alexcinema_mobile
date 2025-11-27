@@ -13,6 +13,20 @@ interface PasswordResetPayload {
   expiresInMinutes: number;
 }
 
+interface BookingTicketPayload {
+  to: string;
+  bookingCode: string;
+  movieTitle: string;
+  cinemaName?: string | null;
+  screenName?: string | null;
+  showtimeStart: string;
+  seats: string[];
+  amount: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  bookingDate?: string;
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -59,6 +73,58 @@ export class MailService {
         'Mail service is not configured yet',
       );
     }
+  }
+
+  async sendBookingTicketEmail(payload: BookingTicketPayload) {
+    this.ensureTransporter();
+
+    const subject = `Xác nhận đặt vé #${payload.bookingCode}`;
+    const seats = payload.seats.length === 0 ? '—' : payload.seats.join(', ');
+    const amountText = payload.amount.toLocaleString('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+    });
+
+    const text = [
+      'Cảm ơn bạn đã đặt vé tại Alex Cinema.',
+      `Mã đặt chỗ: ${payload.bookingCode}`,
+      `Phim: ${payload.movieTitle}`,
+      `Rạp: ${payload.cinemaName ?? 'N/A'}`,
+      `Phòng chiếu: ${payload.screenName ?? 'N/A'}`,
+      `Suất chiếu: ${payload.showtimeStart}`,
+      `Ghế: ${seats}`,
+      `Số tiền: ${amountText}`,
+      `Phương thức thanh toán: ${payload.paymentMethod ?? 'ZaloPay'}`,
+      `Trạng thái thanh toán: ${payload.paymentStatus ?? 'success'}`,
+    ].join('\n');
+
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #111827; line-height: 1.6; max-width: 640px; margin: 0 auto;">
+        <h2 style="color:#4F46E5; margin-bottom: 8px;">Xác nhận đặt vé</h2>
+        <p style="margin:4px 0 12px;">Cảm ơn bạn đã đặt vé tại Alex Cinema.</p>
+        <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#F9FAFB;">
+          <p style="margin:4px 0;"><strong>Mã đặt chỗ:</strong> ${payload.bookingCode}</p>
+          <p style="margin:4px 0;"><strong>Phim:</strong> ${payload.movieTitle}</p>
+          <p style="margin:4px 0;"><strong>Rạp:</strong> ${payload.cinemaName ?? 'N/A'}</p>
+          <p style="margin:4px 0;"><strong>Phòng chiếu:</strong> ${payload.screenName ?? 'N/A'}</p>
+          <p style="margin:4px 0;"><strong>Suất chiếu:</strong> ${payload.showtimeStart}</p>
+          <p style="margin:4px 0;"><strong>Ghế:</strong> ${seats}</p>
+          <p style="margin:4px 0;"><strong>Số tiền:</strong> ${amountText}</p>
+          <p style="margin:4px 0;"><strong>Phương thức thanh toán:</strong> ${payload.paymentMethod ?? 'ZaloPay'}</p>
+          <p style="margin:4px 0;"><strong>Trạng thái thanh toán:</strong> ${payload.paymentStatus ?? 'success'}</p>
+        </div>
+        <p style="margin-top:16px;">Chúc bạn có trải nghiệm xem phim vui vẻ!</p>
+      </div>
+    `;
+
+    await this.transporter!.sendMail({
+      from: this.fromAddress,
+      to: payload.to,
+      subject,
+      text,
+      html,
+    });
   }
 
   async sendPasswordResetEmail(payload: PasswordResetPayload) {

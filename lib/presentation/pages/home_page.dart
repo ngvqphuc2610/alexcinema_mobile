@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 
 import '../../presentation/widgets/navbar_widget.dart';
-import '../widgets/products/products_page.dart';
 import 'account_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -37,13 +36,6 @@ class HomePage extends StatelessWidget {
             icon: Icons.movie_creation_outlined,
             color: Colors.deepPurple,
             onTap: () => _openPage(context, const NavbarMainShell()),
-          ),
-          _FeatureCard(
-            title: 'Combo & Sản phẩm',
-            description: 'Chọn combo bắp nước, snack và đồ uống yêu thích.',
-            icon: Icons.fastfood_outlined,
-            color: Colors.orange.shade700,
-            onTap: () => _openPage(context, const ProductsPage()),
           ),
           _FeatureCard(
             title: 'Tài khoản của tôi',
