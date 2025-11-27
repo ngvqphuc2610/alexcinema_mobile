@@ -90,6 +90,10 @@ export class DocumentIndexerService {
     async indexShowtimes(): Promise<number> {
         this.logger.log('Starting showtime indexing...');
 
+        // Get showtimes from 30 days ago to future
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
         const showtimes = await this.prisma.showtimes.findMany({
             include: {
                 movie: {
@@ -120,62 +124,84 @@ export class DocumentIndexerService {
             },
             where: {
                 show_date: {
-                    gte: new Date(),
+                    gte: thirtyDaysAgo,
                 },
             },
-            take: 1000, // Limit to recent showtimes
+            // Get all showtimes within the date range
         });
 
+        this.logger.log(`Found ${showtimes.length} showtimes to index`);
+
         const points: QdrantPoint[] = [];
+        const BATCH_SIZE = 10; // Upsert every 10 points
+        let totalIndexed = 0;
 
-        for (const showtime of showtimes) {
-            if (!showtime.movie || !showtime.screen || !showtime.screen.cinema) {
-                continue; // Skip if data is incomplete
-            }
+        for (let i = 0; i < showtimes.length; i++) {
+            const showtime = showtimes[i];
 
-            const genres = showtime.movie.genre_movies.map(gm => gm.genre.genre_name).join(', ');
-            const text = this.createShowtimeText(showtime, genres);
-            const vector = await this.embeddings.generateEmbedding(text);
+            try {
+                if (!showtime.movie || !showtime.screen || !showtime.screen.cinema) {
+                    this.logger.warn(`Skipping showtime ${showtime.id_showtime}: incomplete data`);
+                    continue;
+                }
 
-            // Combine show_date and start_time to create full datetime
-            const startDateTime = new Date(showtime.show_date);
-            const [hours, minutes] = showtime.start_time.toTimeString().split(':');
-            startDateTime.setHours(parseInt(hours), parseInt(minutes));
+                const genres = showtime.movie.genre_movies.map(gm => gm.genre.genre_name).join(', ');
+                const text = this.createShowtimeText(showtime, genres);
+                const vector = await this.embeddings.generateEmbedding(text);
 
-            const endDateTime = new Date(showtime.show_date);
-            const [endHours, endMinutes] = showtime.end_time.toTimeString().split(':');
-            endDateTime.setHours(parseInt(endHours), parseInt(endMinutes));
+                // Combine show_date and start_time to create full datetime
+                const startDateTime = new Date(showtime.show_date);
+                const [hours, minutes] = showtime.start_time.toTimeString().split(':');
+                startDateTime.setHours(parseInt(hours), parseInt(minutes));
 
-            points.push({
-                id: showtime.id_showtime,
-                vector,
-                payload: {
+                const endDateTime = new Date(showtime.show_date);
+                const [endHours, endMinutes] = showtime.end_time.toTimeString().split(':');
+                endDateTime.setHours(parseInt(endHours), parseInt(endMinutes));
+
+                points.push({
                     id: showtime.id_showtime,
-                    movieTitle: showtime.movie.title,
-                    genres: genres,
-                    cinemaName: showtime.screen.cinema.cinema_name,
-                    cinemaAddress: showtime.screen.cinema.address,
-                    screenName: showtime.screen.screen_name,
-                    startTime: startDateTime.toISOString(),
-                    endTime: endDateTime.toISOString(),
-                    showDate: showtime.show_date.toISOString(),
-                    format: showtime.format,
-                    language: showtime.language,
-                    subtitle: showtime.subtitle,
-                    price: showtime.price.toNumber(),
-                    type: 'showtime',
-                },
-            });
+                    vector,
+                    payload: {
+                        id: showtime.id_showtime,
+                        movieTitle: showtime.movie.title,
+                        genres: genres,
+                        cinemaName: showtime.screen.cinema.cinema_name,
+                        cinemaAddress: showtime.screen.cinema.address,
+                        screenName: showtime.screen.screen_name,
+                        startTime: startDateTime.toISOString(),
+                        endTime: endDateTime.toISOString(),
+                        showDate: showtime.show_date.toISOString(),
+                        format: showtime.format,
+                        language: showtime.language,
+                        subtitle: showtime.subtitle,
+                        price: showtime.price.toNumber(),
+                        type: 'showtime',
+                    },
+                });
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+                // Batch upsert every BATCH_SIZE points
+                if (points.length >= BATCH_SIZE) {
+                    await this.qdrant.upsertPoints('showtimes', points);
+                    totalIndexed += points.length;
+                    this.logger.log(`Indexed ${totalIndexed}/${showtimes.length} showtimes`);
+                    points.length = 0; // Clear array
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (error) {
+                this.logger.error(`Error indexing showtime ${showtime.id_showtime}: ${error.message}`);
+                // Continue with next showtime
+            }
         }
 
+        // Upsert remaining points
         if (points.length > 0) {
             await this.qdrant.upsertPoints('showtimes', points);
+            totalIndexed += points.length;
         }
 
-        this.logger.log(`Indexed ${points.length} showtimes`);
-        return points.length;
+        this.logger.log(`Indexed ${totalIndexed} showtimes total`);
+        return totalIndexed;
     }
 
     /**
@@ -233,59 +259,89 @@ export class DocumentIndexerService {
      * Index cinemas
      */
     async indexCinemas(): Promise<number> {
-        this.logger.log('Starting cinema indexing...');
+        try {
+            this.logger.log('Starting cinema indexing...');
 
-        const cinemas = await this.prisma.cinemas.findMany({
-            include: {
-                operation_hours: true,
-                screens: {
-                    include: {
-                        screen_type: true,
+            const cinemas = await this.prisma.cinemas.findMany({
+                include: {
+                    operation_hours: true,
+                    screens: {
+                        include: {
+                            screen_type: true,
+                        },
                     },
                 },
-            },
-            where: {
-                status: 'active',
-            },
-        });
-
-        const points: QdrantPoint[] = [];
-
-        for (const cinema of cinemas) {
-            const text = this.createCinemaText(cinema);
-            const vector = await this.embeddings.generateEmbedding(text);
-
-            points.push({
-                id: cinema.id_cinema,
-                vector,
-                payload: {
-                    id: cinema.id_cinema,
-                    name: cinema.cinema_name,
-                    address: cinema.address,
-                    city: cinema.city,
-                    description: cinema.description,
-                    contactNumber: cinema.contact_number,
-                    email: cinema.email,
-                    screenCount: cinema.screens.length,
-                    screenTypes: [...new Set(cinema.screens.map(s => s.screen_type?.type_name).filter(Boolean))],
-                    operationHours: cinema.operation_hours.map(oh => ({
-                        dayOfWeek: oh.day_of_week,
-                        openTime: oh.opening_time?.toTimeString().substring(0, 5),
-                        closeTime: oh.closing_time?.toTimeString().substring(0, 5),
-                    })),
-                    type: 'cinema',
+                where: {
+                    status: 'active',
                 },
             });
 
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
+            this.logger.log(`Found ${cinemas.length} cinemas to index`);
 
-        if (points.length > 0) {
-            await this.qdrant.upsertPoints('cinemas', points);
-        }
+            if (cinemas.length === 0) {
+                this.logger.warn('No active cinemas found to index');
+                return 0;
+            }
 
-        this.logger.log(`Indexed ${points.length} cinemas`);
-        return points.length;
+            const points: QdrantPoint[] = [];
+            let totalIndexed = 0;
+
+            for (let i = 0; i < cinemas.length; i++) {
+                const cinema = cinemas[i];
+
+                try {
+                    this.logger.log(`Indexing cinema ${i + 1}/${cinemas.length}: ${cinema.cinema_name}`);
+
+                    const text = this.createCinemaText(cinema);
+                    this.logger.debug(`Created text for cinema ${cinema.id_cinema}, length: ${text.length}`);
+
+                    const vector = await this.embeddings.generateEmbedding(text);
+                    this.logger.debug(`Generated embedding for cinema ${cinema.id_cinema}, vector length: ${vector.length}`);
+
+                    points.push({
+                        id: cinema.id_cinema,
+                        vector,
+                        payload: {
+                            id: cinema.id_cinema,
+                            name: cinema.cinema_name,
+                            address: cinema.address,
+                            city: cinema.city,
+                            description: cinema.description,
+                            contactNumber: cinema.contact_number,
+                            email: cinema.email,
+                            screenCount: cinema.screens.length,
+                            screenTypes: [...new Set(cinema.screens.map((s: any) => s.screen_type?.type_name).filter(Boolean))],
+                            operationHours: cinema.operation_hours.map((oh: any) => ({
+                                dayOfWeek: oh.day_of_week,
+                                openTime: oh.opening_time?.toTimeString().substring(0, 5),
+                                closeTime: oh.closing_time?.toTimeString().substring(0, 5),
+                            })),
+                            type: 'cinema',
+                        },
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                    this.logger.error(`Error indexing cinema ${cinema.id_cinema} (${cinema.cinema_name}): ${error.message}`);
+                    this.logger.error(error.stack);
+                    // Continue with next cinema
+                }
+            }
+
+            if (points.length > 0) {
+                this.logger.log(`Upserting ${points.length} cinema points to Qdrant...`);
+                await this.qdrant.upsertPoints('cinemas', points);
+                totalIndexed = points.length;
+                this.logger.log(`Successfully upserted ${totalIndexed} cinemas`);
+            }
+
+            this.logger.log(`Indexed ${totalIndexed} cinemas total`);
+            return totalIndexed;
+        } catch (error) {
+            this.logger.error(`Fatal error in indexCinemas: ${error.message}`);
+            this.logger.error(error.stack);
+            throw error;
+        }
     }
 
     /**
@@ -350,7 +406,7 @@ export class DocumentIndexerService {
     private createCinemaText(cinema: any): string {
         const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
         const operationHoursText = cinema.operation_hours
-            .map(oh => `${dayNames[oh.day_of_week]}: ${oh.opening_time?.toTimeString().substring(0, 5)} - ${oh.closing_time?.toTimeString().substring(0, 5)}`)
+            .map((oh: any) => `${dayNames[oh.day_of_week]}: ${oh.opening_time?.toTimeString().substring(0, 5)} - ${oh.closing_time?.toTimeString().substring(0, 5)}`)
             .join(', ');
 
         return `
@@ -361,7 +417,7 @@ export class DocumentIndexerService {
       Số điện thoại: ${cinema.contact_number || ''}
       Email: ${cinema.email || ''}
       Số phòng chiếu: ${cinema.screens.length}
-      Loại phòng: ${[...new Set(cinema.screens.map(s => s.screen_type?.type_name).filter(Boolean))].join(', ')}
+      Loại phòng: ${[...new Set(cinema.screens.map((s: any) => s.screen_type?.type_name).filter(Boolean))].join(', ')}
       Giờ mở cửa: ${operationHoursText}
     `.trim();
     }

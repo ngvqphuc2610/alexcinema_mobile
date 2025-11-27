@@ -36,7 +36,7 @@ export class QdrantService implements OnModuleInit {
      * Create collection if not exists
      */
     private async ensureCollections() {
-        const collections = ['movies', 'showtimes', 'promotions', 'faqs'];
+        const collections = ['movies', 'showtimes', 'promotions', 'faqs', 'cinemas'];
 
         for (const collectionName of collections) {
             try {
