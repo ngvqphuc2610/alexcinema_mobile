@@ -17,6 +17,17 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+
+    // Ensure flutter_zalopay_sdk has a namespace (required by AGP 8+)
+    plugins.withId("com.android.library") {
+        val androidExt = extensions.findByName("android")
+        if (androidExt is com.android.build.gradle.LibraryExtension && androidExt.namespace == null) {
+            when (project.name) {
+                // Keep namespace aligned with plugin code package (for R.java)
+                "flutter_zalopay_sdk" -> androidExt.namespace = "com.flutterzalopay.flutter_zalo_sdk"
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

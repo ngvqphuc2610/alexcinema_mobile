@@ -14,6 +14,8 @@ import {
   Gem,
   UserCog,
   Mail,
+  CreditCard,
+  
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -34,6 +36,8 @@ const navItems = [
   { to: '/staff', label: 'Nhan vien', icon: UserCog },
   { to: '/contacts', label: 'Lien he', icon: Mail },
   { to: '/product-types', label: 'Loai san pham', icon: Ticket },
+  { to: '/payment-methods', label: 'Phuong thuc thanh toan', icon: UserCog },
+  { to: '/payments', label: 'Giao dich', icon: CreditCard },
 
 ];
 

@@ -237,6 +237,49 @@ export interface Booking {
   details?: Array<Record<string, unknown>>;
 }
 
+export interface PaymentMethod {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  iconUrl?: string | null;
+  isActive: boolean;
+  processingFee?: number | null;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  displayOrder: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface Payment {
+  id_payment: number;
+  id_booking?: number | null;
+  id_payment_method?: number | null;
+  payment_method: string;
+  payment_date?: string | null;
+  amount: string;
+  transaction_id?: string | null;
+  status?: string | null;
+  payment_details?: string | null;
+  provider_code?: string | null;
+  provider_order_id?: string | null;
+  provider_trans_id?: string | null;
+  provider_return_code?: string | null;
+  provider_return_message?: string | null;
+  provider_payload?: Record<string, unknown> | null;
+  zp_app_trans_id?: string | null;
+  zp_trans_token?: string | null;
+  zp_order_url?: string | null;
+  zp_pay_url?: string | null;
+  zp_trans_id?: string | null;
+  zp_return_code?: number | null;
+  zp_return_message?: string | null;
+  zp_sub_message?: string | null;
+  booking?: Booking | null;
+  method?: PaymentMethod | null;
+}
+
 export type PaginatedResource<T> = ApiListResponse<T>;
 
 export interface PaginationParams {

@@ -265,6 +265,20 @@ model payments {
   transaction_id    String?          @unique(map: "UQ_TransactionID") @db.VarChar(100)
   status            String?          @default("pending") @db.VarChar(20)
   payment_details   String?          @db.Text
+  provider_code     String?          @db.VarChar(50)
+  provider_order_id String?          @db.VarChar(100)
+  provider_trans_id String?          @db.VarChar(100)
+  provider_return_code String?       @db.VarChar(50)
+  provider_return_message String?    @db.VarChar(255)
+  provider_payload  Json?
+  zp_app_trans_id   String?          @unique(map: "UQ_ZpAppTransId") @db.VarChar(50)
+  zp_trans_token    String?          @db.VarChar(255)
+  zp_order_url      String?          @db.VarChar(500)
+  zp_pay_url        String?          @db.VarChar(500)
+  zp_trans_id       String?          @db.VarChar(100)
+  zp_return_code    Int?
+  zp_return_message String?          @db.VarChar(255)
+  zp_sub_message    String?          @db.VarChar(255)
   booking           bookings?        @relation(fields: [id_booking], references: [id_booking], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_booking")
   method            payment_methods? @relation("PaymentMethodPayments", fields: [id_payment_method], references: [id_payment_method], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_method")
 
