@@ -134,6 +134,10 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   }
 
   void _handleIncomingUri(Uri uri) {
+    print('Deep link received: $uri'); // Debug log
+    print('Scheme: ${uri.scheme}, Path: ${uri.path}'); // Debug log
+    print('Query parameters: ${uri.queryParameters}'); // Debug log
+
     if (uri.scheme.toLowerCase() != 'alexcinema') return;
     if (!uri.path.contains('payment-result')) return;
 
@@ -141,7 +145,10 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         uri.queryParameters['appTransId'] ??
         uri.queryParameters['app_trans_id'] ??
         uri.queryParameters['transactionId'] ??
-        uri.queryParameters['transId'];
+        uri.queryParameters['transId'] ??
+        uri.queryParameters['apptransid'];
+
+    print('Extracted transaction ID: $transactionId'); // Debug log
 
     final cubit = context.read<PaymentCubit>();
     cubit.refreshStatus(transactionId: transactionId);
@@ -344,12 +351,60 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
                             ),
                     ),
                   ),
+                  if (state.status == PaymentFlowStatus.polling)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            const Row(
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Đang chờ xác nhận thanh toán...',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Sau khi thanh toán thành công trên ZaloPay, vui lòng quay lại ứng dụng để hoàn tất.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   if (state.status == PaymentFlowStatus.polling &&
                       state.latestStatus != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
                       child: Text(
-                        'Đang chờ xác nhận thanh toán...',
+                        'Trạng thái: ${state.latestStatus!.status}',
                         style: TextStyle(color: Colors.grey.shade700),
                       ),
                     ),
@@ -365,17 +420,24 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   void _handlePay(BuildContext context, double amount) {
     if (_selectedMethod == null) return;
     final methodCode = _selectedMethod!.code.toUpperCase();
-    if (methodCode != 'ZALOPAY') {
+
+    if (methodCode == 'ZALOPAY') {
+      context.read<PaymentCubit>().payWithZalo(
+        showtimeId: widget.showtimeId,
+        amount: amount,
+        description: widget.movieTitle,
+      );
+    } else if (methodCode == 'VNPAY') {
+      context.read<PaymentCubit>().payWithVNPay(
+        showtimeId: widget.showtimeId,
+        amount: amount,
+        description: widget.movieTitle,
+      );
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Chưa hỗ trợ phương thức $methodCode')),
       );
-      return;
     }
-    context.read<PaymentCubit>().payWithZalo(
-      showtimeId: widget.showtimeId,
-      amount: amount,
-      description: widget.movieTitle,
-    );
   }
 }
 

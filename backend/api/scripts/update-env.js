@@ -26,6 +26,16 @@ const ZALOPAY_CALLBACK_CONFIG = {
   key: 'ZP_CALLBACK_URL',
 };
 
+const ZALOPAY_REDIRECT_CONFIG = {
+  path: API_ENV_PATH,
+  key: 'ZP_REDIRECT_URL',
+};
+
+const VNPAY_RETURN_CONFIG = {
+  path: API_ENV_PATH,
+  key: 'VNP_RETURN_URL',
+};
+
 async function fetchHttpsTunnel() {
   const response = await fetchImpl(NGROK_API);
 
@@ -81,6 +91,16 @@ function updateEnvWithUrl(publicUrl) {
   const zpCallbackUrl = `${apiUrl}/payments/zalopay/callback`;
   updateEnvFile(ZALOPAY_CALLBACK_CONFIG.path, ZALOPAY_CALLBACK_CONFIG.key, zpCallbackUrl);
   console.log(`Updated ${ZALOPAY_CALLBACK_CONFIG.path} with ${ZALOPAY_CALLBACK_CONFIG.key}=${zpCallbackUrl}`);
+
+  // Update ZP_REDIRECT_URL with ngrok URL (proxy endpoint)
+  const zpRedirectUrl = `${apiUrl}/payments/zalopay/return`;
+  updateEnvFile(ZALOPAY_REDIRECT_CONFIG.path, ZALOPAY_REDIRECT_CONFIG.key, zpRedirectUrl);
+  console.log(`Updated ${ZALOPAY_REDIRECT_CONFIG.path} with ${ZALOPAY_REDIRECT_CONFIG.key}=${zpRedirectUrl}`);
+
+  // Update VNP_RETURN_URL with ngrok URL
+  const vnpReturnUrl = `${apiUrl}/payments/vnpay/return`;
+  updateEnvFile(VNPAY_RETURN_CONFIG.path, VNPAY_RETURN_CONFIG.key, vnpReturnUrl);
+  console.log(`Updated ${VNPAY_RETURN_CONFIG.path} with ${VNPAY_RETURN_CONFIG.key}=${vnpReturnUrl}`);
 
   return apiUrl;
 }

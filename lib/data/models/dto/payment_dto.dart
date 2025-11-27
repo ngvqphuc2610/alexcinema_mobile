@@ -25,9 +25,40 @@ class ZaloPayOrderResponseDto {
     return ZaloPayOrderResponseDto(
       appTransId: (json['appTransId'] ?? json['app_trans_id'] ?? '').toString(),
       amount: _toDouble(json['amount']),
-      payUrl: json['payUrl'] as String? ?? json['zp_pay_url'] as String? ?? json['orderUrl'] as String?,
+      payUrl:
+          json['payUrl'] as String? ??
+          json['zp_pay_url'] as String? ??
+          json['orderUrl'] as String?,
       orderUrl: json['orderUrl'] as String?,
       returnMessage: json['returnMessage'] as String?,
+    );
+  }
+}
+
+class VNPayOrderResponseDto {
+  VNPayOrderResponseDto({
+    required this.txnRef,
+    required this.paymentUrl,
+    required this.amount,
+  });
+
+  final String txnRef;
+  final String paymentUrl;
+  final double amount;
+
+  factory VNPayOrderResponseDto.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String && value.isNotEmpty) {
+        return double.tryParse(value) ?? 0;
+      }
+      return 0;
+    }
+
+    return VNPayOrderResponseDto(
+      txnRef: (json['txnRef'] ?? '').toString(),
+      paymentUrl: (json['paymentUrl'] ?? '').toString(),
+      amount: _toDouble(json['amount']),
     );
   }
 }
@@ -73,7 +104,8 @@ class PaymentStatusDto {
     }
 
     return PaymentStatusDto(
-      transactionId: (json['transactionId'] ?? json['transaction_id'] ?? '').toString(),
+      transactionId: (json['transactionId'] ?? json['transaction_id'] ?? '')
+          .toString(),
       status: (json['status'] ?? '').toString(),
       bookingId: json['bookingId'] as int? ?? json['id_booking'] as int?,
       bookingCode: json['bookingCode'] as String?,
