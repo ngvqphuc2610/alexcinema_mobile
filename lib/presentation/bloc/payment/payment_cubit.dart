@@ -27,6 +27,9 @@ class PaymentCubit extends Cubit<PaymentState> {
     String? description,
     List<BookingSeatDto>? seats,
     List<BookingProductDto>? products,
+    String? guestEmail,
+    String? guestName,
+    String? guestPhone,
   }) async {
     await _stopPolling();
     emit(
@@ -47,6 +50,9 @@ class PaymentCubit extends Cubit<PaymentState> {
         userId: userId,
         seats: seats,
         products: products,
+        guestEmail: guestEmail,
+        guestName: guestName,
+        guestPhone: guestPhone,
       );
 
       final bookingId = bookingResponse.idBooking;
@@ -93,6 +99,9 @@ class PaymentCubit extends Cubit<PaymentState> {
     String? bankCode,
     List<BookingSeatDto>? seats,
     List<BookingProductDto>? products,
+    String? guestEmail,
+    String? guestName,
+    String? guestPhone,
   }) async {
     await _stopPolling();
     emit(
@@ -113,6 +122,9 @@ class PaymentCubit extends Cubit<PaymentState> {
         userId: userId,
         seats: seats,
         products: products,
+        guestEmail: guestEmail,
+        guestName: guestName,
+        guestPhone: guestPhone,
       );
 
       final bookingId = bookingResponse.idBooking;
@@ -163,6 +175,9 @@ class PaymentCubit extends Cubit<PaymentState> {
     String? description,
     List<BookingSeatDto>? seats,
     List<BookingProductDto>? products,
+    String? guestEmail,
+    String? guestName,
+    String? guestPhone,
   }) async {
     await _stopPolling();
     emit(
@@ -184,6 +199,9 @@ class PaymentCubit extends Cubit<PaymentState> {
         userId: userId,
         seats: seats,
         products: products,
+        guestEmail: guestEmail,
+        guestName: guestName,
+        guestPhone: guestPhone,
       );
 
       final bookingId = bookingResponse.idBooking;

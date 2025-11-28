@@ -12,6 +12,9 @@ class BookingService {
     int? userId,
     List<BookingSeatDto>? seats,
     List<BookingProductDto>? products,
+    String? guestEmail,
+    String? guestName,
+    String? guestPhone,
   }) {
     return _repository.createBooking(
       CreateBookingDto(
@@ -20,6 +23,9 @@ class BookingService {
         idUsers: userId,
         seats: seats,
         products: products,
+        guestEmail: guestEmail,
+        guestName: guestName,
+        guestPhone: guestPhone,
       ),
     );
   }

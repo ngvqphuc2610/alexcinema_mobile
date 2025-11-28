@@ -38,6 +38,9 @@ class CreateBookingDto {
     this.paymentStatus = 'unpaid',
     this.seats,
     this.products,
+    this.guestEmail,
+    this.guestName,
+    this.guestPhone,
   });
 
   final int? idUsers;
@@ -47,6 +50,9 @@ class CreateBookingDto {
   final String paymentStatus;
   final List<BookingSeatDto>? seats;
   final List<BookingProductDto>? products;
+  final String? guestEmail;
+  final String? guestName;
+  final String? guestPhone;
 
   Map<String, dynamic> toJson() {
     return {
@@ -59,6 +65,9 @@ class CreateBookingDto {
       if (seats != null) 'seats': seats!.map((s) => s.toJson()).toList(),
       if (products != null)
         'products': products!.map((p) => p.toJson()).toList(),
+      if (guestEmail != null) 'guestEmail': guestEmail,
+      if (guestName != null) 'guestName': guestName,
+      if (guestPhone != null) 'guestPhone': guestPhone,
     };
   }
 }

@@ -33,6 +33,9 @@ export class BookingsService {
       payment_status: dto.paymentStatus?.trim(),
       booking_status: dto.bookingStatus?.trim(),
       booking_code: dto.bookingCode?.trim(),
+      guest_email: dto.guestEmail?.trim(),
+      guest_name: dto.guestName?.trim(),
+      guest_phone: dto.guestPhone?.trim(),
     };
 
     // Create booking with seats and products in a transaction

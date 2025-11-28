@@ -52,7 +52,7 @@ class _NavbarMainShellState extends State<NavbarMainShell>
       MoviesPage(),
       CinemasTab(),
       EnterMemshipPage(),
-      PromotionGridPage(),
+      PromotionListPage(),
       AccountPage(),
     ];
   }

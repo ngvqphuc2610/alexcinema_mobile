@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as qrcode from 'qrcode';
 
 interface PasswordResetPayload {
   to: string;
@@ -60,15 +61,18 @@ export class MailService {
           pass,
         },
       });
+
+      this.logger.log(`📧 Mail service initialized with host: ${host}, port: ${port}, secure: ${secure}`);
     } else {
       this.logger.warn(
-        'Mail transport is not fully configured. Forgot password emails will fail until MAIL_HOST, MAIL_USER and MAIL_PASSWORD are provided.',
+        '⚠️ Mail transport is not fully configured. Email sending will fail until MAIL_HOST, MAIL_USER and MAIL_PASSWORD are provided.',
       );
     }
   }
 
   private ensureTransporter() {
     if (!this.transporter) {
+      this.logger.error('❌ Mail service is not configured');
       throw new InternalServerErrorException(
         'Mail service is not configured yet',
       );
@@ -76,101 +80,168 @@ export class MailService {
   }
 
   async sendBookingTicketEmail(payload: BookingTicketPayload) {
+    this.logger.log(`📨 Attempting to send booking ticket email to: ${payload.to}`);
     this.ensureTransporter();
 
-    const subject = `Xác nhận đặt vé #${payload.bookingCode}`;
-    const seats = payload.seats.length === 0 ? '—' : payload.seats.join(', ');
-    const amountText = payload.amount.toLocaleString('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0,
-    });
+    try {
+      const subject = `Xác nhận đặt vé #${payload.bookingCode}`;
+      const seats = payload.seats.length === 0 ? '—' : payload.seats.join(', ');
+      const amountText = payload.amount.toLocaleString('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        minimumFractionDigits: 0,
+      });
 
-    const text = [
-      'Cảm ơn bạn đã đặt vé tại Alex Cinema.',
-      `Mã đặt chỗ: ${payload.bookingCode}`,
-      `Phim: ${payload.movieTitle}`,
-      `Rạp: ${payload.cinemaName ?? 'N/A'}`,
-      `Phòng chiếu: ${payload.screenName ?? 'N/A'}`,
-      `Suất chiếu: ${payload.showtimeStart}`,
-      `Ghế: ${seats}`,
-      `Số tiền: ${amountText}`,
-      `Phương thức thanh toán: ${payload.paymentMethod ?? 'ZaloPay'}`,
-      `Trạng thái thanh toán: ${payload.paymentStatus ?? 'success'}`,
-    ].join('\n');
+      this.logger.debug(`🎫 Generating QR code for booking: ${payload.bookingCode}`);
 
-    const html = `
-      <div style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #111827; line-height: 1.6; max-width: 640px; margin: 0 auto;">
-        <h2 style="color:#4F46E5; margin-bottom: 8px;">Xác nhận đặt vé</h2>
-        <p style="margin:4px 0 12px;">Cảm ơn bạn đã đặt vé tại Alex Cinema.</p>
-        <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#F9FAFB;">
-          <p style="margin:4px 0;"><strong>Mã đặt chỗ:</strong> ${payload.bookingCode}</p>
-          <p style="margin:4px 0;"><strong>Phim:</strong> ${payload.movieTitle}</p>
-          <p style="margin:4px 0;"><strong>Rạp:</strong> ${payload.cinemaName ?? 'N/A'}</p>
-          <p style="margin:4px 0;"><strong>Phòng chiếu:</strong> ${payload.screenName ?? 'N/A'}</p>
-          <p style="margin:4px 0;"><strong>Suất chiếu:</strong> ${payload.showtimeStart}</p>
-          <p style="margin:4px 0;"><strong>Ghế:</strong> ${seats}</p>
-          <p style="margin:4px 0;"><strong>Số tiền:</strong> ${amountText}</p>
-          <p style="margin:4px 0;"><strong>Phương thức thanh toán:</strong> ${payload.paymentMethod ?? 'ZaloPay'}</p>
-          <p style="margin:4px 0;"><strong>Trạng thái thanh toán:</strong> ${payload.paymentStatus ?? 'success'}</p>
+      // Generate QR code with booking information
+      const qrData = JSON.stringify({
+        bookingCode: payload.bookingCode,
+        movieTitle: payload.movieTitle,
+        cinemaName: payload.cinemaName,
+        screenName: payload.screenName,
+        showtimeStart: payload.showtimeStart,
+        seats: payload.seats,
+        amount: payload.amount,
+      });
+
+      // Generate QR code as buffer instead of base64 for better email compatibility
+      const qrCodeBuffer = await qrcode.toBuffer(qrData, {
+        errorCorrectionLevel: 'M',
+        width: 300,
+        margin: 2,
+        type: 'png',
+      });
+
+      this.logger.debug(`✅ QR code generated successfully (${qrCodeBuffer.length} bytes)`);
+
+      const text = [
+        'Cảm ơn bạn đã đặt vé tại Alex Cinema.',
+        `Mã đặt chỗ: ${payload.bookingCode}`,
+        `Phim: ${payload.movieTitle}`,
+        `Rạp: ${payload.cinemaName ?? 'N/A'}`,
+        `Phòng chiếu: ${payload.screenName ?? 'N/A'}`,
+        `Suất chiếu: ${payload.showtimeStart}`,
+        `Ghế: ${seats}`,
+        `Số tiền: ${amountText}`,
+        `Phương thức thanh toán: ${payload.paymentMethod ?? 'ZaloPay'}`,
+        `Trạng thái thanh toán: ${payload.paymentStatus ?? 'success'}`,
+      ].join('\n');
+
+      const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #111827; line-height: 1.6; max-width: 640px; margin: 0 auto;">
+          <h2 style="color:#4F46E5; margin-bottom: 8px;">Xác nhận đặt vé</h2>
+          <p style="margin:4px 0 12px;">Cảm ơn bạn đã đặt vé tại Alex Cinema.</p>
+          <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#F9FAFB;">
+            <p style="margin:4px 0;"><strong>Mã đặt chỗ:</strong> ${payload.bookingCode}</p>
+            <p style="margin:4px 0;"><strong>Phim:</strong> ${payload.movieTitle}</p>
+            <p style="margin:4px 0;"><strong>Rạp:</strong> ${payload.cinemaName ?? 'N/A'}</p>
+            <p style="margin:4px 0;"><strong>Phòng chiếu:</strong> ${payload.screenName ?? 'N/A'}</p>
+            <p style="margin:4px 0;"><strong>Suất chiếu:</strong> ${payload.showtimeStart}</p>
+            <p style="margin:4px 0;"><strong>Ghế:</strong> ${seats}</p>
+            <p style="margin:4px 0;"><strong>Số tiền:</strong> ${amountText}</p>
+            <p style="margin:4px 0;"><strong>Phương thức thanh toán:</strong> ${payload.paymentMethod ?? 'ZaloPay'}</p>
+            <p style="margin:4px 0;"><strong>Trạng thái thanh toán:</strong> ${payload.paymentStatus ?? 'success'}</p>
+          </div>
+          <div style="margin-top:24px; text-align:center;">
+            <p style="margin:8px 0;"><strong>Mã QR vé của bạn:</strong></p>
+            <img src="cid:qrcode" alt="QR Code" style="max-width:300px; height:auto; border:1px solid #E5E7EB; border-radius:8px; padding:8px;"/>
+            <p style="margin:8px 0; font-size:12px; color:#6B7280;">Vui lòng xuất trình mã QR này tại rạp</p>
+          </div>
+          <p style="margin-top:16px;">Chúc bạn có trải nghiệm xem phim vui vẻ!</p>
         </div>
-        <p style="margin-top:16px;">Chúc bạn có trải nghiệm xem phim vui vẻ!</p>
-      </div>
-    `;
+      `;
 
-    await this.transporter!.sendMail({
-      from: this.fromAddress,
-      to: payload.to,
-      subject,
-      text,
-      html,
-    });
+      this.logger.debug(`📤 Sending email from: ${this.fromAddress} to: ${payload.to}`);
+
+      const info = await this.transporter!.sendMail({
+        from: this.fromAddress,
+        to: payload.to,
+        subject,
+        text,
+        html,
+        attachments: [
+          {
+            filename: 'qrcode.png',
+            content: qrCodeBuffer,
+            cid: 'qrcode', // Content-ID for embedding in HTML
+          },
+        ],
+      });
+
+      this.logger.log(`✅ Booking ticket email sent successfully to: ${payload.to}`);
+      this.logger.debug(`📧 Message ID: ${info.messageId}`);
+      this.logger.debug(`📧 Response: ${info.response}`);
+
+      return info;
+    } catch (error) {
+      this.logger.error(`❌ Failed to send booking ticket email to: ${payload.to}`);
+      this.logger.error(`Error: ${error.message}`);
+      this.logger.error(error.stack);
+      throw error;
+    }
   }
 
   async sendPasswordResetEmail(payload: PasswordResetPayload) {
+    this.logger.log(`📨 Attempting to send password reset email to: ${payload.to}`);
     this.ensureTransporter();
 
-    const resetLink = this.buildResetLink(payload.token);
-    const subject = 'Đặt lại mật khẩu của bạn';
-    const text = [
-      `Xin chào ${payload.username},`,
-      '',
-      'Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.',
-      `Hãy bấm vào liên kết sau (hoặc dán vào trình duyệt) để đặt lại mật khẩu: ${resetLink}`,
-      '',
-      `Liên kết có hiệu lực trong ${payload.expiresInMinutes} phút.`,
-      '',
-      'Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.',
-    ].join('\n');
+    try {
+      const resetLink = this.buildResetLink(payload.token);
+      const subject = 'Đặt lại mật khẩu của bạn';
+      const text = [
+        `Xin chào ${payload.username},`,
+        '',
+        'Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.',
+        `Hãy bấm vào liên kết sau (hoặc dán vào trình duyệt) để đặt lại mật khẩu: ${resetLink}`,
+        '',
+        `Liên kết có hiệu lực trong ${payload.expiresInMinutes} phút.`,
+        '',
+        'Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.',
+      ].join('\n');
 
-    const html = `
-      <p>Xin chào <strong>${payload.username}</strong>,</p>
-      <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
-      <p>Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
-      <p>
-        <a href="${resetLink}" style="
-          display:inline-block;
-          padding:12px 24px;
-          border-radius:6px;
-          background-color:#5B21B6;
-          color:#ffffff;
-          text-decoration:none;
-          font-weight:600;
-        ">Đặt lại mật khẩu</a>
-      </p>
-      <p>Nếu bạn không thể nhấp vào nút, hãy dán liên kết sau vào trình duyệt:</p>
-      <p><a href="${resetLink}">${resetLink}</a></p>
-      <p>Liên kết này sẽ hết hạn sau ${payload.expiresInMinutes} phút.</p>
-      <p>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.</p>
-    `;
+      const html = `
+        <p>Xin chào <strong>${payload.username}</strong>,</p>
+        <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+        <p>Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
+        <p>
+          <a href="${resetLink}" style="
+            display:inline-block;
+            padding:12px 24px;
+            border-radius:6px;
+            background-color:#5B21B6;
+            color:#ffffff;
+            text-decoration:none;
+            font-weight:600;
+          ">Đặt lại mật khẩu</a>
+        </p>
+        <p>Nếu bạn không thể nhấp vào nút, hãy dán liên kết sau vào trình duyệt:</p>
+        <p><a href="${resetLink}">${resetLink}</a></p>
+        <p>Liên kết này sẽ hết hạn sau ${payload.expiresInMinutes} phút.</p>
+        <p>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.</p>
+      `;
 
-    await this.transporter!.sendMail({
-      from: this.fromAddress,
-      to: payload.to,
-      subject,
-      text,
-      html,
-    });
+      this.logger.debug(`📤 Sending password reset email from: ${this.fromAddress} to: ${payload.to}`);
+
+      const info = await this.transporter!.sendMail({
+        from: this.fromAddress,
+        to: payload.to,
+        subject,
+        text,
+        html,
+      });
+
+      this.logger.log(`✅ Password reset email sent successfully to: ${payload.to}`);
+      this.logger.debug(`📧 Message ID: ${info.messageId}`);
+      this.logger.debug(`📧 Response: ${info.response}`);
+
+      return info;
+    } catch (error) {
+      this.logger.error(`❌ Failed to send password reset email to: ${payload.to}`);
+      this.logger.error(`Error: ${error.message}`);
+      this.logger.error(error.stack);
+      throw error;
+    }
   }
 
   private buildResetLink(token: string): string {

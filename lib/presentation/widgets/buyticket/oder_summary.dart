@@ -48,6 +48,10 @@ class OrderSummaryPage extends StatefulWidget {
     required this.seats,
     required this.combos,
     this.seatIds = const [],
+    this.userId,
+    this.userEmail,
+    this.userFullName,
+    this.userPhone,
     this.onPaymentSucceeded,
     this.onPaymentFailed,
     this.tags = const <String>[],
@@ -68,6 +72,10 @@ class OrderSummaryPage extends StatefulWidget {
   final List<SeatSelection> seats;
   final List<int> seatIds;
   final List<ConcessionSelection> combos;
+  final int? userId;
+  final String? userEmail;
+  final String? userFullName;
+  final String? userPhone;
   final String? initialPaymentCode;
   final Duration holdDuration;
   final VoidCallback? onHoldExpired;
@@ -446,24 +454,36 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        userId: widget.userId,
         seats: seats,
         products: products,
+        guestEmail: widget.userEmail,
+        guestName: widget.userFullName,
+        guestPhone: widget.userPhone,
       );
     } else if (methodCode == 'VNPAY') {
       context.read<PaymentCubit>().payWithVNPay(
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        userId: widget.userId,
         seats: seats,
         products: products,
+        guestEmail: widget.userEmail,
+        guestName: widget.userFullName,
+        guestPhone: widget.userPhone,
       );
     } else if (methodCode == 'MOMO') {
       context.read<PaymentCubit>().payWithMoMo(
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        userId: widget.userId,
         seats: seats,
         products: products,
+        guestEmail: widget.userEmail,
+        guestName: widget.userFullName,
+        guestPhone: widget.userPhone,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
