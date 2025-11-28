@@ -1,3 +1,34 @@
+class BookingSeatDto {
+  const BookingSeatDto({required this.idSeats, this.price});
+
+  final int idSeats;
+  final double? price;
+
+  Map<String, dynamic> toJson() {
+    return {'idSeats': idSeats, if (price != null) 'price': price};
+  }
+}
+
+class BookingProductDto {
+  const BookingProductDto({
+    required this.idProduct,
+    required this.quantity,
+    this.price,
+  });
+
+  final int idProduct;
+  final int quantity;
+  final double? price;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'idProduct': idProduct,
+      'quantity': quantity,
+      if (price != null) 'price': price,
+    };
+  }
+}
+
 class CreateBookingDto {
   const CreateBookingDto({
     required this.idShowtime,
@@ -5,6 +36,8 @@ class CreateBookingDto {
     this.idUsers,
     this.bookingStatus = 'pending',
     this.paymentStatus = 'unpaid',
+    this.seats,
+    this.products,
   });
 
   final int? idUsers;
@@ -12,6 +45,8 @@ class CreateBookingDto {
   final double totalAmount;
   final String bookingStatus;
   final String paymentStatus;
+  final List<BookingSeatDto>? seats;
+  final List<BookingProductDto>? products;
 
   Map<String, dynamic> toJson() {
     return {
@@ -21,6 +56,9 @@ class CreateBookingDto {
       'bookingStatus': bookingStatus,
       'paymentStatus': paymentStatus,
       'bookingDate': DateTime.now().toIso8601String(),
+      if (seats != null) 'seats': seats!.map((s) => s.toJson()).toList(),
+      if (products != null)
+        'products': products!.map((p) => p.toJson()).toList(),
     };
   }
 }

@@ -21,6 +21,7 @@ class ProductsPage extends StatefulWidget {
     required this.posterUrl,
     required this.durationText,
     this.selectedSeats = const [],
+    this.seatIds = const [],
     this.seatPrices = const {},
     this.ticketTotal = 0,
     this.tags = const [],
@@ -35,6 +36,7 @@ class ProductsPage extends StatefulWidget {
   final String posterUrl;
   final String durationText;
   final List<String> selectedSeats;
+  final List<int> seatIds;
   final Map<String, double> seatPrices;
   final double ticketTotal;
   final List<String> tags;
@@ -274,6 +276,7 @@ class _ProductsPageState extends State<ProductsPage> {
           durationText: widget.durationText,
           tags: widget.tags,
           seats: seatSelections,
+          seatIds: widget.seatIds,
           combos: comboSelections,
           onPaymentSucceeded: (status) {
             Navigator.of(context).popUntil((route) => route.isFirst);

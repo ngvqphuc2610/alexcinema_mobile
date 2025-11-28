@@ -19,7 +19,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('showtimes')
 export class ShowtimesController {
-  constructor(private readonly showtimesService: ShowtimesService) {}
+  constructor(private readonly showtimesService: ShowtimesService) { }
 
   @Get()
   findAll(
@@ -48,6 +48,11 @@ export class ShowtimesController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.showtimesService.findOne(id);
+  }
+
+  @Get(':id/booked-seats')
+  getBookedSeats(@Param('id', ParseIntPipe) id: number) {
+    return this.showtimesService.getBookedSeats(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

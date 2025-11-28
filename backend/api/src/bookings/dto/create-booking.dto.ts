@@ -1,5 +1,32 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min, IsArray, ValidateNested } from 'class-validator';
+
+export class BookingSeatDto {
+  @Type(() => Number)
+  @IsInt()
+  idSeats!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  price?: number;
+}
+
+export class BookingProductDto {
+  @Type(() => Number)
+  @IsInt()
+  idProduct!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  price?: number;
+}
 
 export class CreateBookingDto {
   @IsOptional()
@@ -48,4 +75,16 @@ export class CreateBookingDto {
   @IsString()
   @MaxLength(20)
   bookingCode?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingSeatDto)
+  seats?: BookingSeatDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingProductDto)
+  products?: BookingProductDto[];
 }

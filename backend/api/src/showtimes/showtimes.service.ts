@@ -150,6 +150,51 @@ export class ShowtimesService {
     return showtime;
   }
 
+  /**
+   * Get booked seat IDs for a showtime
+   * Returns seat IDs that are either:
+   * 1. In confirmed bookings (detail_booking)
+   * 2. Temporarily locked (seat_locks with valid expiry)
+   */
+  async getBookedSeats(showtimeId: number): Promise<number[]> {
+    await this.ensureExists(showtimeId);
+
+    // Get seats from confirmed bookings
+    const bookedSeats = await this.prisma.detail_booking.findMany({
+      where: {
+        booking: {
+          id_showtime: showtimeId,
+          booking_status: {
+            in: ['confirmed', 'pending'], // Include pending bookings
+          },
+        },
+      },
+      select: {
+        id_seats: true,
+      },
+    });
+
+    // Get temporarily locked seats (not expired)
+    const lockedSeats = await this.prisma.seat_locks.findMany({
+      where: {
+        id_showtime: showtimeId,
+        expires_at: {
+          gte: new Date(), // Not expired
+        },
+      },
+      select: {
+        id_seats: true,
+      },
+    });
+
+    // Combine and deduplicate
+    const allSeatIds = new Set<number>();
+    bookedSeats.forEach((s) => allSeatIds.add(s.id_seats));
+    lockedSeats.forEach((s) => allSeatIds.add(s.id_seats));
+
+    return Array.from(allSeatIds);
+  }
+
   private async ensureExists(id: number) {
     const exists = await this.prisma.showtimes.findUnique({
       where: { id_showtime: id },

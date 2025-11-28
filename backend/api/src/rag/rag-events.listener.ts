@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { DocumentIndexerService } from './document-indexer.service';
 
@@ -6,7 +6,7 @@ import { DocumentIndexerService } from './document-indexer.service';
  * Event listener for auto re-indexing RAG data when database changes
  */
 @Injectable()
-export class RagEventsListener {
+export class RagEventsListener implements OnModuleInit {
     private readonly logger = new Logger(RagEventsListener.name);
     private indexingQueue: Set<string> = new Set();
     private indexingTimer: NodeJS.Timeout | null = null;
@@ -14,8 +14,85 @@ export class RagEventsListener {
 
     constructor(private readonly indexer: DocumentIndexerService) { }
 
+    // ==========================================
+    // 1. LOGIC SMART SYNC (Khi khởi động)
+    // ==========================================
+    async onModuleInit() {
+        this.logger.log('Checking Qdrant data integrity on startup...');
+        
+        // Chạy ngầm background để không block app start
+        this.checkAndSyncData().catch(err => {
+            this.logger.error('Failed to sync data on startup', err);
+        });
+    }
+    
+    async checkAndSyncData() {
+        try {
+            this.logger.log('Starting Smart Sync Check...');
+
+            // --- 1. Movies ---
+            const [dbMovies, qdrantMovies] = await Promise.all([
+                this.indexer.countMoviesInDb(),
+                this.indexer.countMoviesInQdrant()
+            ]);
+
+            if (dbMovies !== qdrantMovies) {
+                this.logger.warn(`Mismatch in Movies (DB: ${dbMovies} vs Qdrant: ${qdrantMovies}). Re-indexing...`);
+                await this.indexer.resetMoviesCollection();
+            } else {
+                this.logger.log(`Movies are in sync (${dbMovies}).`);
+            }
+
+            // --- 2. Showtimes ---
+            const [dbShowtimes, qdrantShowtimes] = await Promise.all([
+                this.indexer.countShowtimesInDb(),
+                this.indexer.countShowtimesInQdrant()
+            ]);
+
+            if (dbShowtimes !== qdrantShowtimes) {
+                this.logger.warn(`Mismatch in Showtimes (DB: ${dbShowtimes} vs Qdrant: ${qdrantShowtimes}). Re-indexing...`);
+                await this.indexer.resetShowtimesCollection();
+            } else {
+                 this.logger.log(`Showtimes are in sync (${dbShowtimes}).`);
+            }
+
+            // --- 3. Promotions ---
+            const [dbPromotions, qdrantPromotions] = await Promise.all([
+                this.indexer.countPromotionsInDb(),
+                this.indexer.countPromotionsInQdrant()
+            ]);
+            
+            if (dbPromotions !== qdrantPromotions) {
+                this.logger.warn(`Mismatch in Promotions (DB: ${dbPromotions} vs Qdrant: ${qdrantPromotions}). Re-indexing...`);
+                await this.indexer.resetPromotionsCollection();
+            } else {
+                this.logger.log(`Promotions are in sync (${dbPromotions}).`);
+            }
+
+            // --- 4. Cinemas ---
+            const [dbCinemas, qdrantCinemas] = await Promise.all([
+                this.indexer.countCinemasInDb(),
+                this.indexer.countCinemasInQdrant()
+            ]);
+
+            if (dbCinemas !== qdrantCinemas) {
+                this.logger.warn(`Mismatch in Cinemas (DB: ${dbCinemas} vs Qdrant: ${qdrantCinemas}). Re-indexing...`);
+                await this.indexer.resetCinemasCollection();
+            } else {
+                this.logger.log(`Cinemas are in sync (${dbCinemas}).`);
+            }
+
+        } catch (error) {
+            this.logger.error(`Failed to smart sync data: ${error.message}`);
+        }
+    }
+
+    // ==========================================
+    // 2. LOGIC XỬ LÝ SỰ KIỆN (REAL-TIME)
+    // ==========================================
+
     /**
-     * Handle movie created/updated events
+     * Handle movie created/updated -> RE-INDEX (Upsert)
      */
     @OnEvent('movie.created')
     @OnEvent('movie.updated')
@@ -25,16 +102,17 @@ export class RagEventsListener {
     }
 
     /**
-     * Handle movie deleted event
+     * Handle movie deleted -> DELETE TRỰC TIẾP
      */
     @OnEvent('movie.deleted')
     async handleMovieDeleted(payload: any) {
         this.logger.log(`Movie deleted: ${payload.id}`);
-        this.scheduleReindex('movies');
+        // SỬA: Gọi hàm xóa trực tiếp, không re-index
+        await this.indexer.deleteMovie(payload.id);
     }
 
     /**
-     * Handle showtime created/updated events
+     * Handle showtime created/updated -> RE-INDEX
      */
     @OnEvent('showtime.created')
     @OnEvent('showtime.updated')
@@ -44,16 +122,16 @@ export class RagEventsListener {
     }
 
     /**
-     * Handle showtime deleted event
+     * Handle showtime deleted -> DELETE TRỰC TIẾP
      */
     @OnEvent('showtime.deleted')
     async handleShowtimeDeleted(payload: any) {
         this.logger.log(`Showtime deleted: ${payload.id}`);
-        this.scheduleReindex('showtimes');
+        await this.indexer.deleteShowtime(payload.id);
     }
 
     /**
-     * Handle promotion created/updated events
+     * Handle promotion created/updated -> RE-INDEX
      */
     @OnEvent('promotion.created')
     @OnEvent('promotion.updated')
@@ -63,16 +141,16 @@ export class RagEventsListener {
     }
 
     /**
-     * Handle promotion deleted event
+     * Handle promotion deleted -> DELETE TRỰC TIẾP
      */
     @OnEvent('promotion.deleted')
     async handlePromotionDeleted(payload: any) {
         this.logger.log(`Promotion deleted: ${payload.id}`);
-        this.scheduleReindex('promotions');
+        await this.indexer.deletePromotion(payload.id);
     }
 
     /**
-     * Handle cinema created/updated events
+     * Handle cinema created/updated -> RE-INDEX
      */
     @OnEvent('cinema.created')
     @OnEvent('cinema.updated')
@@ -82,39 +160,35 @@ export class RagEventsListener {
     }
 
     /**
-     * Handle cinema deleted event
+     * Handle cinema deleted -> DELETE TRỰC TIẾP
      */
     @OnEvent('cinema.deleted')
     async handleCinemaDeleted(payload: any) {
         this.logger.log(`Cinema deleted: ${payload.id}`);
-        this.scheduleReindex('cinemas');
+        await this.indexer.deleteCinema(payload.id);
     }
 
-    /**
-     * Schedule re-indexing with debounce to avoid too frequent updates
-     */
+    // ==========================================
+    // 3. LOGIC DEBOUNCE RE-INDEXING
+    // ==========================================
+
     private scheduleReindex(collection: string) {
         this.indexingQueue.add(collection);
 
-        // Clear existing timer
         if (this.indexingTimer) {
             clearTimeout(this.indexingTimer);
         }
 
-        // Schedule new indexing after debounce delay
         this.indexingTimer = setTimeout(() => {
             this.executeReindex();
         }, this.DEBOUNCE_DELAY);
     }
 
-    /**
-     * Execute re-indexing for all queued collections
-     */
     private async executeReindex() {
         const collections = Array.from(this.indexingQueue);
         this.indexingQueue.clear();
 
-        this.logger.log(`Starting re-indexing for: ${collections.join(', ')}`);
+        this.logger.log(`Starting debounce re-indexing for: ${collections.join(', ')}`);
 
         for (const collection of collections) {
             try {
@@ -133,7 +207,7 @@ export class RagEventsListener {
                         count = await this.indexer.indexCinemas();
                         break;
                 }
-                this.logger.log(`Re-indexed ${count} ${collection}`);
+                this.logger.log(`Re-indexed ${count} items in ${collection}`);
             } catch (error) {
                 this.logger.error(`Failed to re-index ${collection}: ${error.message}`);
             }

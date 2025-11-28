@@ -32,6 +32,38 @@ export class QdrantService implements OnModuleInit {
         await this.ensureCollections();
     }
 
+    async countCollection(collectionName: string): Promise<number> {
+        try {
+            const result = await firstValueFrom(
+                this.httpService.get(`${this.qdrantUrl}/collections/${collectionName}`),
+            );
+            // FIX: Qdrant trả về data.result.points_count, không phải data.points_count
+            return result.data.result?.points_count ?? 0;
+        } catch (error) {
+            // Nếu collection chưa tồn tại hoặc lỗi, coi như là 0
+            return 0;
+        }
+    }
+
+    /**
+     * Delete specific points from collection
+     */
+    async deletePoints(collectionName: string, ids: (string | number)[]): Promise<void> {
+        const url = `${this.qdrantUrl}/collections/${collectionName}/points/delete`;
+
+        try {
+            await firstValueFrom(
+                this.httpService.post(url, {
+                    points: ids,
+                }),
+            );
+            this.logger.log(`Deleted ${ids.length} points from ${collectionName}`);
+        } catch (error) {
+            this.logger.error(`Failed to delete points: ${error.message}`);
+            throw error;
+        }
+    }
+
     /**
      * Create collection if not exists
      */

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app_links/app_links.dart';
 
 import '../../../core/di/dependency_injection.dart';
+import '../../../data/models/dto/booking_dto.dart';
 import '../../../data/models/dto/payment_dto.dart';
 import '../../../data/models/entity/payment_method_entity.dart';
 import '../../bloc/payment/payment_cubit.dart';
@@ -46,6 +47,7 @@ class OrderSummaryPage extends StatefulWidget {
     required this.durationText,
     required this.seats,
     required this.combos,
+    this.seatIds = const [],
     this.onPaymentSucceeded,
     this.onPaymentFailed,
     this.tags = const <String>[],
@@ -64,6 +66,7 @@ class OrderSummaryPage extends StatefulWidget {
   final String durationText;
   final List<String> tags;
   final List<SeatSelection> seats;
+  final List<int> seatIds;
   final List<ConcessionSelection> combos;
   final String? initialPaymentCode;
   final Duration holdDuration;
@@ -421,23 +424,46 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
     if (_selectedMethod == null) return;
     final methodCode = _selectedMethod!.code.toUpperCase();
 
+    // Build seats and products DTOs
+    final seats = widget.seatIds
+        .asMap()
+        .entries
+        .map(
+          (entry) => BookingSeatDto(
+            idSeats: entry.value,
+            price: widget.seats.length > entry.key
+                ? widget.seats[entry.key].price
+                : null,
+          ),
+        )
+        .toList();
+
+    // TODO: Add products when product selection is implemented
+    final products = <BookingProductDto>[];
+
     if (methodCode == 'ZALOPAY') {
       context.read<PaymentCubit>().payWithZalo(
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        seats: seats,
+        products: products,
       );
     } else if (methodCode == 'VNPAY') {
       context.read<PaymentCubit>().payWithVNPay(
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        seats: seats,
+        products: products,
       );
     } else if (methodCode == 'MOMO') {
       context.read<PaymentCubit>().payWithMoMo(
         showtimeId: widget.showtimeId,
         amount: amount,
         description: widget.movieTitle,
+        seats: seats,
+        products: products,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

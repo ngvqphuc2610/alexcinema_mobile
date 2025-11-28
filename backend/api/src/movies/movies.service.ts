@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { MovieStatus, Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
@@ -86,6 +86,23 @@ export class MoviesService {
 
   async remove(id: number) {
     await this.ensureExists(id);
+
+    // Check if movie has showtimes with bookings
+    const showtimesWithBookings = await this.prisma.showtimes.count({
+      where: {
+        id_movie: id,
+        bookings: {
+          some: {},
+        },
+      },
+    });
+
+    if (showtimesWithBookings > 0) {
+      throw new BadRequestException(
+        `Cannot delete movie. It has ${showtimesWithBookings} showtime(s) with existing bookings. Please delete bookings first.`,
+      );
+    }
+
     const movie = await this.prisma.movies.delete({ where: { id_movie: id } });
 
     // Emit event for RAG re-indexing

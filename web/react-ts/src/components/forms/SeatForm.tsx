@@ -26,7 +26,7 @@ const SeatForm = ({ screens, defaultValues, isSubmitting, onSubmit, onCancel }: 
       idSeatType: undefined,
       seatRow: '',
       seatNumber: 1,
-      status: 'available',
+      status: 'active',
     },
   );
 
@@ -42,19 +42,38 @@ const SeatForm = ({ screens, defaultValues, isSubmitting, onSubmit, onCancel }: 
     setValues((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    // Validation
+    if (!values.idScreen) {
+      alert('Vui long chon phong chieu');
+      return;
+    }
+    if (!values.idSeatType) {
+      alert('Vui long chon loai ghe');
+      return;
+    }
+    if (!values.seatRow || values.seatRow.trim() === '') {
+      alert('Vui long nhap hang ghe');
+      return;
+    }
+    if (!values.seatNumber || values.seatNumber < 1) {
+      alert('So ghe phai lon hon 0');
+      return;
+    }
+
+    onSubmit(values);
+  };
+
   return (
-    <form
-      className="form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit(values);
-      }}
-    >
-      <FormField label="Phong chieu" htmlFor="seat-screen">
+    <form className="form" onSubmit={handleSubmit}>
+      <FormField label="Phong chieu" htmlFor="seat-screen" required>
         <select
           id="seat-screen"
           value={values.idScreen ?? ''}
           onChange={(event) => handleChange('idScreen', event.target.value)}
+          required
         >
           <option value="">-- Chon phong --</option>
           {screens.map((screen) => (
@@ -64,13 +83,18 @@ const SeatForm = ({ screens, defaultValues, isSubmitting, onSubmit, onCancel }: 
           ))}
         </select>
       </FormField>
-      <FormField label="Loai ghe (ID)" htmlFor="seat-type">
-        <input
+      <FormField label="Loai ghe" htmlFor="seat-type" required>
+        <select
           id="seat-type"
-          type="number"
           value={values.idSeatType ?? ''}
           onChange={(event) => handleChange('idSeatType', event.target.value)}
-        />
+          required
+        >
+          <option value="">-- Chon loai ghe --</option>
+          <option value="1">VIP</option>
+          <option value="2">Standard</option>
+          <option value="3">Economy</option>
+        </select>
       </FormField>
       <FormField label="Hang ghe" htmlFor="seat-row" required>
         <input
@@ -97,10 +121,9 @@ const SeatForm = ({ screens, defaultValues, isSubmitting, onSubmit, onCancel }: 
           value={values.status ?? ''}
           onChange={(event) => handleChange('status', event.target.value)}
         >
-          <option value="available">Available</option>
+          <option value="active">Hoat dong</option>
+          <option value="inactive">Tam ngung</option>
           <option value="maintenance">Bao tri</option>
-          <option value="unavailable">Khong su dung</option>
-          <option value="">Khac</option>
         </select>
       </FormField>
       <div className="form__actions">

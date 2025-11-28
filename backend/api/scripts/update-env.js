@@ -9,11 +9,16 @@ if (typeof fetchImpl !== 'function') {
 
 const NGROK_API = 'http://127.0.0.1:4040/api/tunnels';
 const API_ENV_PATH = path.resolve(__dirname, '..', '.env');
+const LIB_ENV_PATH = path.resolve(__dirname, '..', '..', '..' , 'lib', '.env');
 const FLUTTER_ENV_PATH = path.resolve(__dirname, '..', '..', '..', '.env');
 const TARGET_ENV_CONFIGS = [
   {
     path: API_ENV_PATH,
     key: 'API_URL',
+  },
+  {
+    path: LIB_ENV_PATH,
+    key: 'API_BASE_URL',
   },
   {
     path: FLUTTER_ENV_PATH,

@@ -14,7 +14,7 @@ import MovieForm from '../../components/forms/MovieForm';
 import type { MovieFormValues } from '../../components/forms/MovieForm';
 import StatusDot from '../../components/common/StatusDot';
 import { fetchMovies, createMovie, updateMovie, deleteMovie } from '../../api/movies';
-import type { Movie } from '../../types';
+import type { Movie, MovieStatus } from '../../types';
 import { formatDate, formatStatus } from '../../utils/format';
 
 const mapMovieToFormValues = (movie: Movie): MovieFormValues => ({
@@ -55,16 +55,24 @@ const toMoviePayload = (values: MovieFormValues) => ({
   status: values.status,
 });
 
+const ITEMS_PER_PAGE = 10;
+
 const MoviesPage = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<MovieStatus | ''>('');
   const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['movies', { page, search }],
-    queryFn: () => fetchMovies({ page, search: search || undefined }),
+    queryKey: ['movies', { page, search, status: statusFilter }],
+    queryFn: () => fetchMovies({
+      page,
+      limit: ITEMS_PER_PAGE,
+      search: search || undefined,
+      status: statusFilter || undefined,
+    }),
     placeholderData: keepPreviousData,
   });
 
@@ -74,6 +82,10 @@ const MoviesPage = () => {
       queryClient.invalidateQueries({ queryKey: ['movies'] });
       setCreateModalOpen(false);
     },
+    onError: (error: any) => {
+      console.error('Create movie error:', error);
+      alert(`Loi tao phim: ${error.response?.data?.message || error.message}`);
+    },
   });
 
   const updateMutation = useMutation({
@@ -81,6 +93,10 @@ const MoviesPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movies'] });
       setEditingMovie(null);
+    },
+    onError: (error: any) => {
+      console.error('Update movie error:', error);
+      alert(`Loi cap nhat phim: ${error.response?.data?.message || error.message}`);
     },
   });
 
@@ -96,6 +112,10 @@ const MoviesPage = () => {
     if (window.confirm(`Ban chac chan muon xoa phim "${movie.title}"?`)) {
       deleteMutation.mutate(movie.id_movie);
     }
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage);
   };
 
   const columns = useMemo(
@@ -160,6 +180,20 @@ const MoviesPage = () => {
         description="Them, chinh sua va theo doi danh muc phim."
         actions={
           <div className="card__actions-group">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setPage(1);
+                setStatusFilter(e.target.value as MovieStatus | '');
+              }}
+              className="form-select"
+              style={{ minWidth: '150px' }}
+            >
+              <option value="">Tat ca trang thai</option>
+              <option value="coming_soon">Sap chieu</option>
+              <option value="now_showing">Dang chieu</option>
+              <option value="expired">Ngung chieu</option>
+            </select>
             <SearchInput
               placeholder="Tim kiem phim..."
               onSearch={(value) => {
@@ -181,10 +215,10 @@ const MoviesPage = () => {
             <DataTable data={items} columns={columns} rowKey={(movie) => movie.id_movie} />
             {meta && (
               <Pagination
-                page={meta.page}
+                page={page}
                 totalPages={meta.totalPages}
                 total={meta.total}
-                onChange={(nextPage) => setPage(nextPage)}
+                onChange={handlePageChange}
               />
             )}
           </>
