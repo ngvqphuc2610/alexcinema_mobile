@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import '../../../data/models/dto/booking_dto.dart';
 import '../../../domain/services/booking_service.dart';
 import '../../../domain/services/payment_service.dart';
 import '../common/error_helpers.dart';
@@ -24,6 +25,8 @@ class PaymentCubit extends Cubit<PaymentState> {
     required double amount,
     int? userId,
     String? description,
+    List<BookingSeatDto>? seats,
+    List<BookingProductDto>? products,
   }) async {
     await _stopPolling();
     emit(
@@ -42,6 +45,8 @@ class PaymentCubit extends Cubit<PaymentState> {
         showtimeId: showtimeId,
         totalAmount: amount,
         userId: userId,
+        seats: seats,
+        products: products,
       );
 
       final bookingId = bookingResponse.idBooking;
@@ -86,6 +91,8 @@ class PaymentCubit extends Cubit<PaymentState> {
     int? userId,
     String? description,
     String? bankCode,
+    List<BookingSeatDto>? seats,
+    List<BookingProductDto>? products,
   }) async {
     await _stopPolling();
     emit(
@@ -104,6 +111,8 @@ class PaymentCubit extends Cubit<PaymentState> {
         showtimeId: showtimeId,
         totalAmount: amount,
         userId: userId,
+        seats: seats,
+        products: products,
       );
 
       final bookingId = bookingResponse.idBooking;
@@ -152,6 +161,8 @@ class PaymentCubit extends Cubit<PaymentState> {
     required double amount,
     int? userId,
     String? description,
+    List<BookingSeatDto>? seats,
+    List<BookingProductDto>? products,
   }) async {
     await _stopPolling();
     emit(
@@ -171,6 +182,8 @@ class PaymentCubit extends Cubit<PaymentState> {
         showtimeId: showtimeId,
         totalAmount: amount,
         userId: userId,
+        seats: seats,
+        products: products,
       );
 
       final bookingId = bookingResponse.idBooking;

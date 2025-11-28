@@ -19,7 +19,7 @@ export interface BookingQueryParams {
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(dto: CreateBookingDto) {
     const data: Prisma.bookingsUncheckedCreateInput = {
@@ -35,9 +35,47 @@ export class BookingsService {
       booking_code: dto.bookingCode?.trim(),
     };
 
-    return this.prisma.bookings.create({
-      data,
-      include: this.defaultInclude(),
+    // Create booking with seats and products in a transaction
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create the booking
+      const booking = await tx.bookings.create({
+        data,
+        include: this.defaultInclude(),
+      });
+
+      // 2. Create detail_booking records for seats
+      if (dto.seats && dto.seats.length > 0) {
+        for (const seat of dto.seats) {
+          await tx.detail_booking.create({
+            data: {
+              id_booking: booking.id_booking,
+              id_seats: seat.idSeats,
+              price: seat.price ?? 0,
+            },
+          });
+        }
+      }
+
+      // 3. Create order_product records for products
+      if (dto.products && dto.products.length > 0) {
+        for (const product of dto.products) {
+          await tx.order_product.create({
+            data: {
+              id_booking: booking.id_booking,
+              id_product: product.idProduct,
+              quantity: product.quantity,
+              price: product.price ?? 0,
+              order_status: 'pending',
+            },
+          });
+        }
+      }
+
+      // 4. Return booking with details
+      return tx.bookings.findUnique({
+        where: { id_booking: booking.id_booking },
+        include: this.defaultInclude(),
+      });
     });
   }
 

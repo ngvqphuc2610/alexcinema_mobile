@@ -29,6 +29,7 @@ import '../../data/repositories/screen_type_repository.dart';
 import '../../data/repositories/showtime_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/services/api_client.dart';
+import '../../data/services/seat_service.dart';
 import '../../data/services/token_storage.dart';
 import '../../domain/services/auth_service.dart';
 import '../../domain/services/booking_service.dart';
@@ -218,6 +219,9 @@ void _registerServices() {
     () => GeminiService(ragService: sl()),
   );
   sl.registerLazySingleton<SpeechService>(() => SpeechService());
+
+  // Seat Service
+  sl.registerLazySingleton<SeatService>(() => SeatService(sl()));
 }
 
 void _registerBlocs() {

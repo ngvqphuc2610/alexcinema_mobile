@@ -1,17 +1,32 @@
 import 'package:flutter/material.dart';
 
-import '../../../../data/models/entity/movie_entity.dart';
-import '../../../../data/models/entity/showtime_entity.dart';
+import '../../../core/di/injection_container.dart';
+import '../../../data/models/entity/movie_entity.dart';
+import '../../../data/models/entity/seat_entity.dart';
+import '../../../data/models/entity/showtime_entity.dart';
+import '../../../data/services/seat_service.dart';
 import 'booking_flow_shell.dart';
 import '../products/products_page.dart';
 import 'ticket_type_selector.dart';
 
 class Seat {
-  Seat({required this.id, required this.type, this.isBooked = false});
+  Seat({
+    required this.id,
+    required this.type,
+    required this.row,
+    required this.number,
+    this.isBooked = false,
+    this.seatTypeId,
+  });
 
-  final String id;
+  final int id; // Database ID
   final SeatType type;
+  final String row;
+  final int number;
   final bool isBooked;
+  final int? seatTypeId;
+
+  String get label => '$row$number';
 }
 
 class SeatMapPage extends StatefulWidget {
@@ -31,8 +46,12 @@ class SeatMapPage extends StatefulWidget {
 }
 
 class _SeatMapPageState extends State<SeatMapPage> {
-  late final List<List<Seat?>> _layout;
-  final Set<String> _selected = {};
+  List<List<Seat?>> _layout = [];
+  final Set<int> _selected = {};
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  late final SeatService _seatService;
 
   int get _totalTickets =>
       widget.ticketOptions.fold(0, (sum, opt) => sum + opt.quantity);
@@ -63,31 +82,154 @@ class _SeatMapPageState extends State<SeatMapPage> {
   @override
   void initState() {
     super.initState();
-    _layout = _buildMockLayout();
+    _seatService = sl<SeatService>();
+    _loadSeats();
   }
 
-  List<List<Seat?>> _buildMockLayout() {
-    // Mock layout with a center aisle.
-    Seat s(String id, {bool booked = false, SeatType type = SeatType.single}) =>
-        Seat(id: id, type: type, isBooked: booked);
-    return [
-      [s('A01'), s('A02'), null, s('A03'), s('A04')],
-      [s('B01'), s('B02'), null, s('B03'), s('B04', booked: true)],
-      [s('C01'), s('C02'), null, s('C03'), s('C04')],
-      [s('D01'), s('D02'), null, s('D03'), s('D04')],
-      [s('E01'), s('E02'), null, s('E03'), s('E04')],
-      [
-        s('F01', type: SeatType.doubleSeat),
-        null,
-        null,
-        null,
-        s('F02', type: SeatType.doubleSeat),
-      ],
-    ];
+  Future<void> _loadSeats() async {
+    if (widget.showtime.screen?.id == null) {
+      setState(() {
+        _errorMessage = 'Không tìm thấy thông tin phòng chiếu';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // Fetch seats for this screen
+      final seats = await _seatService.getSeatsForScreen(
+        widget.showtime.screen!.id,
+      );
+      print(
+        '🪑 Fetched ${seats.length} seats for screen ${widget.showtime.screen!.id}',
+      );
+
+      // Fetch booked seats for this showtime
+      final bookedSeatIds = await _seatService.getBookedSeatsForShowtime(
+        widget.showtime.id,
+      );
+      print(
+        '🔒 Booked seat IDs for showtime ${widget.showtime.id}: $bookedSeatIds',
+      );
+
+      // Build layout from seats
+      final layout = _buildLayoutFromSeats(seats, bookedSeatIds);
+      print('📐 Built layout with ${layout.length} rows');
+
+      setState(() {
+        _layout = layout;
+        _isLoading = false;
+        // Clear selected seats when reloading (in case seats are now booked)
+        _selected.clear();
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Lỗi khi tải sơ đồ ghế: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<List<Seat?>> _buildLayoutFromSeats(
+    List<SeatEntity> seats,
+    Set<int> bookedSeatIds,
+  ) {
+    if (seats.isEmpty) return [];
+
+    print(
+      '🏗️ Building layout from ${seats.length} seats, ${bookedSeatIds.length} booked',
+    );
+
+    // Group seats by row
+    final Map<String, List<SeatEntity>> seatsByRow = {};
+    for (final seat in seats) {
+      if (seat.isActive) {
+        // Only show active seats
+        seatsByRow.putIfAbsent(seat.seatRow, () => []).add(seat);
+      }
+    }
+
+    print('📊 Grouped into ${seatsByRow.length} rows');
+
+    // Sort rows alphabetically
+    final sortedRows = seatsByRow.keys.toList()..sort();
+
+    // Build layout with center aisle
+    final layout = <List<Seat?>>[];
+    int totalBookedInLayout = 0;
+
+    for (final rowKey in sortedRows) {
+      final rowSeats = seatsByRow[rowKey]!;
+      // Sort by seat number
+      rowSeats.sort((a, b) => a.seatNumber.compareTo(b.seatNumber));
+
+      final rowLayout = <Seat?>[];
+      final midPoint = rowSeats.length ~/ 2;
+
+      for (int i = 0; i < rowSeats.length; i++) {
+        final seatEntity = rowSeats[i];
+        final isBooked = bookedSeatIds.contains(seatEntity.idSeats);
+
+        if (isBooked) {
+          totalBookedInLayout++;
+          print(
+            '🔒 Seat ${seatEntity.seatRow}${seatEntity.seatNumber} (ID: ${seatEntity.idSeats}) is BOOKED',
+          );
+        }
+
+        // Determine seat type
+        SeatType seatType = SeatType.single;
+        if (seatEntity.seatType != null) {
+          if (seatEntity.seatType!.isDouble) {
+            seatType = SeatType.doubleSeat;
+          } else if (seatEntity.seatType!.isVip) {
+            seatType = SeatType.single; // Can add VIP type if needed
+          }
+        }
+
+        rowLayout.add(
+          Seat(
+            id: seatEntity.idSeats,
+            type: seatType,
+            row: seatEntity.seatRow,
+            number: seatEntity.seatNumber,
+            isBooked: isBooked,
+            seatTypeId: seatEntity.idSeatType,
+          ),
+        );
+
+        // Add aisle in the middle (for rows with 6+ seats)
+        if (i == midPoint - 1 && rowSeats.length >= 6) {
+          rowLayout.add(null); // Aisle
+        }
+      }
+
+      layout.add(rowLayout);
+    }
+
+    print('✅ Layout complete: $totalBookedInLayout booked seats in layout');
+
+    return layout;
   }
 
   List<Seat> _flattenSeats() {
     return _layout.expand((row) => row.whereType<Seat>()).toList();
+  }
+
+  String _getSelectedSeatLabels() {
+    final seats = _flattenSeats();
+    final selectedSeats = seats.where((s) => _selected.contains(s.id)).toList();
+    selectedSeats.sort((a, b) {
+      final rowCompare = a.row.compareTo(b.row);
+      if (rowCompare != 0) return rowCompare;
+      return a.number.compareTo(b.number);
+    });
+    return selectedSeats.map((s) => s.label).join(', ');
   }
 
   void _toggleSeat(Seat seat) {
@@ -141,7 +283,7 @@ class _SeatMapPageState extends State<SeatMapPage> {
       title: widget.movie.title,
       subtitle: 'Chọn ghế - $timeLabel $dateLabel',
       summaryLines: [
-        '${_selected.length}/${_totalTickets} Ghế: ${_selected.isEmpty ? '-' : _selected.join(', ')}',
+        '${_selected.length}/${_totalTickets} Ghế: ${_selected.isEmpty ? '-' : _getSelectedSeatLabels()}',
         'Tổng cộng: ${_formatCurrency(_totalPrice)}',
       ],
       primaryLabel: 'Tiếp tục',
@@ -152,64 +294,106 @@ class _SeatMapPageState extends State<SeatMapPage> {
           return;
         }
 
-        // Build seat prices map
+        // Build seat labels and prices map
+        final seats = _flattenSeats();
+        final selectedSeats = seats
+            .where((s) => _selected.contains(s.id))
+            .toList();
+        selectedSeats.sort((a, b) {
+          final rowCompare = a.row.compareTo(b.row);
+          if (rowCompare != 0) return rowCompare;
+          return a.number.compareTo(b.number);
+        });
+
+        final seatLabels = selectedSeats.map((s) => s.label).toList();
+        final seatIds = selectedSeats.map((s) => s.id).toList();
         final seatPrices = <String, double>{};
-        for (final seatId in _selected) {
-          final seat = _flattenSeats().firstWhere((s) => s.id == seatId);
+        for (final seat in selectedSeats) {
           final ticketType = widget.ticketOptions.firstWhere(
             (opt) => opt.seatType == seat.type,
             orElse: () => widget.ticketOptions.first,
           );
-          seatPrices[seatId] = ticketType.price;
+          seatPrices[seat.label] = ticketType.price;
         }
 
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProductsPage(
-              bookingId: widget
-                  .showtime
-                  .id, // Using showtime ID as booking ID placeholder
-              showtimeId: widget.showtime.id,
-              cinemaName:
-                  widget.showtime.screen?.cinema?.cinemaName ??
-                  'Rạp chiếu phim',
-              showtime: DateTime(
-                widget.showtime.showDate.year,
-                widget.showtime.showDate.month,
-                widget.showtime.showDate.day,
-                widget.showtime.startTime.hour,
-                widget.showtime.startTime.minute,
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (_) => ProductsPage(
+                  bookingId: widget
+                      .showtime
+                      .id, // Using showtime ID as booking ID placeholder
+                  showtimeId: widget.showtime.id,
+                  cinemaName:
+                      widget.showtime.screen?.cinema?.cinemaName ??
+                      'Rạp chiếu phim',
+                  showtime: DateTime(
+                    widget.showtime.showDate.year,
+                    widget.showtime.showDate.month,
+                    widget.showtime.showDate.day,
+                    widget.showtime.startTime.hour,
+                    widget.showtime.startTime.minute,
+                  ),
+                  screenName:
+                      widget.showtime.screen?.screenName ?? 'Phòng chiếu',
+                  movieTitle: widget.movie.title,
+                  posterUrl:
+                      widget.movie.posterImage ??
+                      widget.movie.bannerImage ??
+                      '',
+                  durationText: '${widget.movie.duration} phút',
+                  tags: [
+                    if (widget.movie.ageRestriction != null)
+                      widget.movie.ageRestriction!,
+                    if (widget.movie.language != null) widget.movie.language!,
+                  ],
+                  selectedSeats: seatLabels,
+                  seatIds: seatIds,
+                  seatPrices: seatPrices,
+                  ticketTotal: _totalPrice,
+                ),
               ),
-              screenName: widget.showtime.screen?.screenName ?? 'Phòng chiếu',
-              movieTitle: widget.movie.title,
-              posterUrl:
-                  widget.movie.posterImage ?? widget.movie.bannerImage ?? '',
-              durationText: '${widget.movie.duration} phút',
-              tags: [
-                if (widget.movie.ageRestriction != null)
-                  widget.movie.ageRestriction!,
-                if (widget.movie.language != null) widget.movie.language!,
-              ],
-              selectedSeats: _selected.toList()..sort(),
-              seatPrices: seatPrices,
-              ticketTotal: _totalPrice,
-            ),
-          ),
-        );
+            )
+            .then((_) {
+              // Reload seats when returning from products/payment page
+              _loadSeats();
+            });
       },
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _ScreenHeader(showtime: widget.showtime),
-            const SizedBox(height: 20),
-            _buildSeatGrid(),
-            const SizedBox(height: 16),
-            _Legend(),
-          ],
-        ),
-      ),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadSeats,
+                    child: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _ScreenHeader(showtime: widget.showtime),
+                  const SizedBox(height: 20),
+                  _buildSeatGrid(),
+                  const SizedBox(height: 16),
+                  _Legend(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -290,7 +474,7 @@ class _SeatTile extends StatelessWidget {
           border: Border.all(color: border, width: 1.2),
         ),
         child: Text(
-          seat.id,
+          seat.label,
           style: TextStyle(
             color: seat.isBooked ? Colors.black54 : Colors.white,
             fontWeight: FontWeight.w700,

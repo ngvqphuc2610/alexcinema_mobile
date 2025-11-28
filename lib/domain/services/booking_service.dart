@@ -10,12 +10,16 @@ class BookingService {
     required int showtimeId,
     required double totalAmount,
     int? userId,
+    List<BookingSeatDto>? seats,
+    List<BookingProductDto>? products,
   }) {
     return _repository.createBooking(
       CreateBookingDto(
         idShowtime: showtimeId,
         totalAmount: totalAmount,
         idUsers: userId,
+        seats: seats,
+        products: products,
       ),
     );
   }

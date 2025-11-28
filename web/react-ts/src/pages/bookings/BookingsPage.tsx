@@ -21,6 +21,8 @@ const mapBookingToFormValues = (booking: Booking) => ({
   bookingCode: booking.booking_code ?? '',
 });
 
+const ITEMS_PER_PAGE = 10;
+
 const BookingsPage = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -32,6 +34,7 @@ const BookingsPage = () => {
     queryFn: () =>
       fetchBookings({
         page,
+        limit: ITEMS_PER_PAGE,
         bookingCode: search || undefined,
       }),
     placeholderData: keepPreviousData,
@@ -145,7 +148,7 @@ const BookingsPage = () => {
             <DataTable data={items} columns={columns} rowKey={(booking) => booking.id_booking} />
             {meta && (
               <Pagination
-                page={meta.page}
+                page={page}
                 totalPages={meta.totalPages}
                 total={meta.total}
                 onChange={(nextPage) => setPage(nextPage)}

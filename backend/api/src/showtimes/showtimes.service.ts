@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateShowtimeDto } from './dto/create-showtime.dto';
 import { UpdateShowtimeDto } from './dto/update-showtime.dto';
@@ -17,7 +18,10 @@ export interface ShowtimesQueryParams {
 
 @Injectable()
 export class ShowtimesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) { }
 
   async create(dto: CreateShowtimeDto) {
     const data: Prisma.showtimesUncheckedCreateInput = {
@@ -33,7 +37,12 @@ export class ShowtimesService {
       price: dto.price,
     };
 
-    return this.prisma.showtimes.create({ data });
+    const showtime = await this.prisma.showtimes.create({ data });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('showtime.created', { id: showtime.id_showtime });
+
+    return showtime;
   }
 
   async findAll(params: ShowtimesQueryParams = {}) {
@@ -44,8 +53,8 @@ export class ShowtimesService {
       id_screen: params.screenId ?? undefined,
       screen: params.cinemaId
         ? {
-            id_cinema: params.cinemaId,
-          }
+          id_cinema: params.cinemaId,
+        }
         : undefined,
       status: params.status?.trim(),
       format: params.format?.trim(),
@@ -114,7 +123,7 @@ export class ShowtimesService {
       price: dto.price ?? undefined,
     };
 
-    return this.prisma.showtimes.update({
+    const showtime = await this.prisma.showtimes.update({
       where: { id_showtime: id },
       data,
       include: {
@@ -122,13 +131,68 @@ export class ShowtimesService {
         screen: true,
       },
     });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('showtime.updated', { id: showtime.id_showtime });
+
+    return showtime;
   }
 
   async remove(id: number) {
     await this.ensureExists(id);
-    return this.prisma.showtimes.delete({
+    const showtime = await this.prisma.showtimes.delete({
       where: { id_showtime: id },
     });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('showtime.deleted', { id });
+
+    return showtime;
+  }
+
+  /**
+   * Get booked seat IDs for a showtime
+   * Returns seat IDs that are either:
+   * 1. In confirmed bookings (detail_booking)
+   * 2. Temporarily locked (seat_locks with valid expiry)
+   */
+  async getBookedSeats(showtimeId: number): Promise<number[]> {
+    await this.ensureExists(showtimeId);
+
+    // Get seats from confirmed bookings
+    const bookedSeats = await this.prisma.detail_booking.findMany({
+      where: {
+        booking: {
+          id_showtime: showtimeId,
+          booking_status: {
+            in: ['confirmed', 'pending'], // Include pending bookings
+          },
+        },
+      },
+      select: {
+        id_seats: true,
+      },
+    });
+
+    // Get temporarily locked seats (not expired)
+    const lockedSeats = await this.prisma.seat_locks.findMany({
+      where: {
+        id_showtime: showtimeId,
+        expires_at: {
+          gte: new Date(), // Not expired
+        },
+      },
+      select: {
+        id_seats: true,
+      },
+    });
+
+    // Combine and deduplicate
+    const allSeatIds = new Set<number>();
+    bookedSeats.forEach((s) => allSeatIds.add(s.id_seats));
+    lockedSeats.forEach((s) => allSeatIds.add(s.id_seats));
+
+    return Array.from(allSeatIds);
   }
 
   private async ensureExists(id: number) {
@@ -147,8 +211,8 @@ export class ShowtimesService {
       trimmed.length === 5
         ? `${trimmed}:00`
         : trimmed.length === 8
-        ? trimmed
-        : `${trimmed.padEnd(5, ':0')}:00`;
+          ? trimmed
+          : `${trimmed.padEnd(5, ':0')}:00`;
     return new Date(`1970-01-01T${normalized}Z`);
   }
 }

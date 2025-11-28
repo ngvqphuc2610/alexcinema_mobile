@@ -6,12 +6,41 @@ import { EmbeddingsService } from './embeddings.service';
 @Injectable()
 export class DocumentIndexerService {
     private readonly logger = new Logger(DocumentIndexerService.name);
+    private readonly BATCH_SIZE = 10;
 
     constructor(
         private readonly prisma: PrismaService,
         private readonly qdrant: QdrantService,
         private readonly embeddings: EmbeddingsService,
     ) { }
+
+    async resetMoviesCollection() {
+        this.logger.warn('Resetting Movies collection...');
+        await this.qdrant.deleteCollection('movies');
+        await this.qdrant.createCollection('movies');
+        await this.indexMovies();
+    }
+
+    async resetShowtimesCollection() {
+        this.logger.warn('Resetting Showtimes collection...');
+        await this.qdrant.deleteCollection('showtimes');
+        await this.qdrant.createCollection('showtimes');
+        await this.indexShowtimes();
+    }
+
+    async resetPromotionsCollection() {
+        this.logger.warn('Resetting Promotions collection...');
+        await this.qdrant.deleteCollection('promotions');
+        await this.qdrant.createCollection('promotions');
+        await this.indexPromotions();
+    }
+
+    async resetCinemasCollection() {
+        this.logger.warn('Resetting Cinemas collection...');
+        await this.qdrant.deleteCollection('cinemas');
+        await this.qdrant.createCollection('cinemas');
+        await this.indexCinemas(); 
+    }
 
     /**
      * Index all movies into Qdrant
@@ -44,6 +73,7 @@ export class DocumentIndexerService {
         });
 
         const points: QdrantPoint[] = [];
+        let totalIndexed = 0;
 
         for (const movie of movies) {
             // Create searchable text from movie data
@@ -72,12 +102,20 @@ export class DocumentIndexerService {
                 },
             });
 
-            // Rate limiting
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (points.length >= this.BATCH_SIZE) {
+                await this.qdrant.upsertPoints('movies', points);
+                totalIndexed += points.length;
+                this.logger.log(`Indexed ${totalIndexed}/${movies.length} movies`);
+                points.length = 0; // Clear array
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            
         }
 
         if (points.length > 0) {
             await this.qdrant.upsertPoints('movies', points);
+            totalIndexed += points.length;
         }
 
         this.logger.log(`Indexed ${points.length} movies`);
@@ -185,9 +223,10 @@ export class DocumentIndexerService {
                     totalIndexed += points.length;
                     this.logger.log(`Indexed ${totalIndexed}/${showtimes.length} showtimes`);
                     points.length = 0; // Clear array
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 100));
+                
             } catch (error) {
                 this.logger.error(`Error indexing showtime ${showtime.id_showtime}: ${error.message}`);
                 // Continue with next showtime
@@ -219,6 +258,7 @@ export class DocumentIndexerService {
         });
 
         const points: QdrantPoint[] = [];
+        let totalIndexed = 0;
 
         for (const promotion of promotions) {
             const text = this.createPromotionText(promotion);
@@ -244,7 +284,15 @@ export class DocumentIndexerService {
                 },
             });
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (points.length >= this.BATCH_SIZE) {
+                await this.qdrant.upsertPoints('promotions', points);
+                totalIndexed += points.length;
+                this.logger.log(`Indexed ${totalIndexed}/${promotions.length} promotions`);
+                points.length = 0; // Clear array
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            
         }
 
         if (points.length > 0) {
@@ -319,8 +367,15 @@ export class DocumentIndexerService {
                             type: 'cinema',
                         },
                     });
+                    if (points.length >= this.BATCH_SIZE) {
+                        await this.qdrant.upsertPoints('cinemas', points);
+                        totalIndexed += points.length;
+                        this.logger.log(`Indexed ${totalIndexed}/${cinemas.length} cinemas`);
+                        points.length = 0; // Clear array
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
 
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
                 } catch (error) {
                     this.logger.error(`Error indexing cinema ${cinema.id_cinema} (${cinema.cinema_name}): ${error.message}`);
                     this.logger.error(error.stack);
@@ -356,6 +411,66 @@ export class DocumentIndexerService {
         ]);
 
         return { movies, showtimes, promotions, cinemas };
+    }
+
+    async deleteMovie(id: number) {
+        await this.qdrant.deletePoints('movies', [id]);
+    }
+
+    async deleteShowtime(id: number) {
+        await this.qdrant.deletePoints('showtimes', [id]);
+    }
+
+    async deletePromotion(id: number) {
+        await this.qdrant.deletePoints('promotions', [id]);
+    }
+
+    async deleteCinema(id: number) {
+        await this.qdrant.deletePoints('cinemas', [id]);
+    }
+
+
+   async countMoviesInDb(): Promise<number> {
+        return this.prisma.movies.count();
+    }
+    async countMoviesInQdrant(): Promise<number> {
+        // Giả sử QdrantService của bạn có method này, nếu chưa có hãy xem phần chú thích cuối bài
+        return this.qdrant.countCollection('movies'); 
+    }
+
+    async countShowtimesInDb(): Promise<number> {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return this.prisma.showtimes.count({
+            where: {
+                show_date: { gte: thirtyDaysAgo },
+            },
+        });
+    }
+    async countShowtimesInQdrant(): Promise<number> {
+        return this.qdrant.countCollection('showtimes');
+    }
+
+    // 3. Promotions Count (Khớp điều kiện active)
+    async countPromotionsInDb(): Promise<number> {
+        return this.prisma.promotions.count({
+            where: {
+                end_date: { gte: new Date() },
+            },
+        });
+    }
+    async countPromotionsInQdrant(): Promise<number> {
+        return this.qdrant.countCollection('promotions');
+    }
+
+    // 4. Cinemas Count (Khớp điều kiện active)
+    async countCinemasInDb(): Promise<number> {
+        return this.prisma.cinemas.count({
+            where: { status: 'active' },
+        });
+    }
+    async countCinemasInQdrant(): Promise<number> {
+        return this.qdrant.countCollection('cinemas');
     }
 
     // Helper methods to create searchable text

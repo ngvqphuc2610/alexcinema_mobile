@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { MovieStatus, Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
@@ -13,11 +14,19 @@ export interface MoviePaginationParams {
 
 @Injectable()
 export class MoviesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) { }
 
   async create(dto: CreateMovieDto) {
     const data: Prisma.moviesCreateInput = this.toCreateInput(dto);
-    return this.prisma.movies.create({ data });
+    const movie = await this.prisma.movies.create({ data });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('movie.created', { id: movie.id_movie });
+
+    return movie;
   }
 
   async findAll(params: MoviePaginationParams = {}) {
@@ -26,7 +35,7 @@ export class MoviesService {
     const where: Prisma.moviesWhereInput = {
       status: params.status ?? undefined,
       title: params.search
-        ? { contains: params.search}
+        ? { contains: params.search }
         : undefined,
     };
 
@@ -64,15 +73,42 @@ export class MoviesService {
   async update(id: number, dto: UpdateMovieDto) {
     await this.ensureExists(id);
     const data: Prisma.moviesUpdateInput = this.toUpdateInput(dto);
-    return this.prisma.movies.update({
+    const movie = await this.prisma.movies.update({
       where: { id_movie: id },
       data,
     });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('movie.updated', { id: movie.id_movie });
+
+    return movie;
   }
 
   async remove(id: number) {
     await this.ensureExists(id);
-    return this.prisma.movies.delete({ where: { id_movie: id } });
+
+    // Check if movie has showtimes with bookings
+    const showtimesWithBookings = await this.prisma.showtimes.count({
+      where: {
+        id_movie: id,
+        bookings: {
+          some: {},
+        },
+      },
+    });
+
+    if (showtimesWithBookings > 0) {
+      throw new BadRequestException(
+        `Cannot delete movie. It has ${showtimesWithBookings} showtime(s) with existing bookings. Please delete bookings first.`,
+      );
+    }
+
+    const movie = await this.prisma.movies.delete({ where: { id_movie: id } });
+
+    // Emit event for RAG re-indexing
+    this.eventEmitter.emit('movie.deleted', { id });
+
+    return movie;
   }
 
   private async ensureExists(id: number) {

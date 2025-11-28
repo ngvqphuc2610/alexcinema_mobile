@@ -25,19 +25,27 @@ const mapSeatToFormValues = (seat: Seat): SeatFormValues => ({
   status: seat.status ?? '',
 });
 
+const ITEMS_PER_PAGE = 20;
+
 const SeatsPage = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [filterScreenId, setFilterScreenId] = useState<number | undefined>();
+  const [filterSeatTypeId, setFilterSeatTypeId] = useState<number | undefined>();
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['seats', { page, search }],
+    queryKey: ['seats', { page, search, filterScreenId, filterSeatTypeId }],
     queryFn: () =>
       fetchSeats({
         page,
+        limit: ITEMS_PER_PAGE,
         seatRow: search || undefined,
+        screenId: filterScreenId,
+        seatTypeId: filterSeatTypeId,
       }),
     placeholderData: keepPreviousData,
   });
@@ -52,6 +60,12 @@ const SeatsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seats'] });
       setCreateModalOpen(false);
+      setError(null);
+    },
+    onError: (err: any) => {
+      const message = err?.response?.data?.message || err?.message || 'Loi khi them ghe';
+      setError(message);
+      console.error('Create seat error:', err);
     },
   });
 
@@ -60,6 +74,12 @@ const SeatsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seats'] });
       setEditingSeat(null);
+      setError(null);
+    },
+    onError: (err: any) => {
+      const message = err?.response?.data?.message || err?.message || 'Loi khi cap nhat ghe';
+      setError(message);
+      console.error('Update seat error:', err);
     },
   });
 
@@ -125,6 +145,36 @@ const SeatsPage = () => {
         description="Quan ly ghe cho tung phong."
         actions={
           <div className="card__actions-group">
+            <select
+              value={filterScreenId ?? ''}
+              onChange={(e) => {
+                setPage(1);
+                setFilterScreenId(e.target.value ? Number(e.target.value) : undefined);
+              }}
+              className="filter-select"
+              title="Loc theo phong chieu"
+            >
+              <option value="">-- Tat ca phong --</option>
+              {screenOptions.map((screen) => (
+                <option key={screen.id_screen} value={screen.id_screen}>
+                  {screen.screen_name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterSeatTypeId ?? ''}
+              onChange={(e) => {
+                setPage(1);
+                setFilterSeatTypeId(e.target.value ? Number(e.target.value) : undefined);
+              }}
+              className="filter-select"
+              title="Loc theo loai ghe"
+            >
+              <option value="">-- Tat ca loai ghe --</option>
+              <option value="1">VIP</option>
+              <option value="2">Standard</option>
+              <option value="3">Economy</option>
+            </select>
             <SearchInput
               placeholder="Tim theo hang ghe..."
               onSearch={(value) => {
@@ -146,7 +196,7 @@ const SeatsPage = () => {
             <DataTable data={items} columns={columns} rowKey={(seat) => seat.id_seats} />
             {meta && (
               <Pagination
-                page={meta.page}
+                page={page}
                 totalPages={meta.totalPages}
                 total={meta.total}
                 onChange={(nextPage) => setPage(nextPage)}
@@ -156,11 +206,18 @@ const SeatsPage = () => {
         )}
       </Card>
 
-      <Modal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="Them ghe">
+      <Modal open={isCreateModalOpen} onClose={() => {
+        setCreateModalOpen(false);
+        setError(null);
+      }} title="Them ghe">
+        {error && <div style={{ color: '#ef4444', marginBottom: '12px', padding: '8px', backgroundColor: '#fee2e2', borderRadius: '6px', fontSize: '14px' }}>{error}</div>}
         <SeatForm
           screens={screenOptions}
           isSubmitting={createMutation.isPending}
-          onCancel={() => setCreateModalOpen(false)}
+          onCancel={() => {
+            setCreateModalOpen(false);
+            setError(null);
+          }}
           onSubmit={(values) => createMutation.mutate(values)}
         />
       </Modal>
@@ -170,16 +227,21 @@ const SeatsPage = () => {
         onClose={() => {
           if (!updateMutation.isPending) {
             setEditingSeat(null);
+            setError(null);
           }
         }}
         title={editingSeat ? `Chinh sua ghe ${editingSeat.seat_row}${editingSeat.seat_number}` : ''}
       >
+        {error && <div style={{ color: '#ef4444', marginBottom: '12px', padding: '8px', backgroundColor: '#fee2e2', borderRadius: '6px', fontSize: '14px' }}>{error}</div>}
         {editingSeat && (
           <SeatForm
             screens={screenOptions}
             defaultValues={mapSeatToFormValues(editingSeat)}
             isSubmitting={updateMutation.isPending}
-            onCancel={() => setEditingSeat(null)}
+            onCancel={() => {
+              setEditingSeat(null);
+              setError(null);
+            }}
             onSubmit={(values) =>
               updateMutation.mutate({
                 id: editingSeat.id_seats,

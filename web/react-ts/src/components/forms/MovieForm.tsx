@@ -8,8 +8,8 @@ import type { MovieStatus } from '../../types';
 import { uploadImage } from '../../api/uploads';
 
 const movieStatusOptions: Record<MovieStatus, string> = {
-  'coming soon': 'Sap chieu',
-  'now showing': 'Dang chieu',
+  coming_soon: 'Sap chieu',
+  now_showing: 'Dang chieu',
   expired: 'Ngung chieu',
 };
 
@@ -29,7 +29,7 @@ const schema = z.object({
   bannerImage: z.string().optional().or(z.literal('')),
   trailerUrl: z.string().optional().or(z.literal('')),
   ageRestriction: z.string().optional().or(z.literal('')),
-  status: z.enum(['coming soon', 'now showing', 'expired']),
+  status: z.enum(['coming_soon', 'now_showing', 'expired']),
 });
 
 export type MovieFormValues = z.infer<typeof schema>;
@@ -81,7 +81,7 @@ const MovieForm = ({ defaultValues, onSubmit, onCancel, isSubmitting = false }: 
       bannerImage: '',
       trailerUrl: '',
       ageRestriction: '',
-      status: 'coming soon',
+      status: 'coming_soon',
       ...defaultValues,
     },
   });

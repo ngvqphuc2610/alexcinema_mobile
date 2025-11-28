@@ -35,9 +35,9 @@ export interface AuthResponse {
   sessionToken?: string;
 }
 
-export interface User extends AuthUser {}
+export interface User extends AuthUser { }
 
-export type MovieStatus = 'coming soon' | 'now showing' | 'expired';
+export type MovieStatus = 'coming_soon' | 'now_showing' | 'expired';
 
 export interface Movie {
   id_movie: number;
