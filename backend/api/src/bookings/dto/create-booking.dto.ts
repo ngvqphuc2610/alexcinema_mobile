@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min, IsArray, ValidateNested } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min, IsArray, ValidateNested, IsEmail } from 'class-validator';
 
 export class BookingSeatDto {
   @Type(() => Number)
@@ -75,6 +75,18 @@ export class CreateBookingDto {
   @IsString()
   @MaxLength(20)
   bookingCode?: string;
+
+  @IsOptional()
+  @IsEmail()
+  guestEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  guestName?: string;
+
+  @IsOptional()
+  @IsString()
+  guestPhone?: string;
 
   @IsOptional()
   @IsArray()

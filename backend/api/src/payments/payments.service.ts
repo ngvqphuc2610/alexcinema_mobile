@@ -44,12 +44,28 @@ interface MoMoConfig {
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
+  // Track sent emails to prevent duplicates (bookingId -> timestamp)
+  private readonly emailSentCache = new Map<number, number>();
+  private readonly EMAIL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly paymentMethodsService: PaymentMethodsService,
     private readonly mailService: MailService,
-  ) { }
+  ) {
+    // Clean up cache periodically
+    setInterval(() => this.cleanupEmailCache(), 60 * 1000); // Every 1 minute
+  }
+
+  private cleanupEmailCache() {
+    const now = Date.now();
+    for (const [bookingId, timestamp] of this.emailSentCache.entries()) {
+      if (now - timestamp > this.EMAIL_CACHE_TTL) {
+        this.emailSentCache.delete(bookingId);
+      }
+    }
+  }
 
   async getAllPayments(params: {
     page?: number;
@@ -359,6 +375,17 @@ export class PaymentsService {
     bookingId: number,
     options: { amount: number; transactionId: string; paymentMethod?: string; paymentStatus?: string },
   ) {
+    // Check if email already sent recently (within 5 minutes)
+    const lastSent = this.emailSentCache.get(bookingId);
+    const now = Date.now();
+
+    if (lastSent && (now - lastSent) < this.EMAIL_CACHE_TTL) {
+      this.logger.warn(
+        `⏭️ Skipping duplicate email for booking ${bookingId} (sent ${Math.round((now - lastSent) / 1000)}s ago)`
+      );
+      return;
+    }
+
     const booking = await this.prisma.bookings.findUnique({
       where: { id_booking: bookingId },
       include: {
@@ -379,9 +406,11 @@ export class PaymentsService {
       return;
     }
 
+    // ← SỬA: Thêm type assertion hoặc optional chaining
     const recipient =
       booking.user?.email ??
-      booking.member?.user?.email;
+      booking.member?.user?.email ??
+      (booking as any).guest_email; // Type assertion
 
     if (!recipient) {
       this.logger.warn(`Cannot send ticket email: no email for booking ${bookingId}`);
@@ -413,6 +442,10 @@ export class PaymentsService {
       paymentStatus: options.paymentStatus,
       bookingDate: booking.booking_date?.toISOString(),
     });
+
+    // Mark email as sent
+    this.emailSentCache.set(bookingId, now);
+    this.logger.log(`📬 Email sent and cached for booking ${bookingId}`);
   }
 
   private buildAppTransId(bookingId: number) {
@@ -606,6 +639,8 @@ export class PaymentsService {
 
     const method = await this.paymentMethodsService.ensureVNPayMethod();
 
+    let bookingIdForEmail: number | null = null;
+
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.payments.findUnique({
         where: { transaction_id: vnpTxnRef },
@@ -636,10 +671,19 @@ export class PaymentsService {
             booking_status: 'confirmed',
           },
         });
-
-        // Skip email sending for now - can be added later if needed
+        bookingIdForEmail = existing.id_booking;
       }
     });
+
+    // Send email after successful payment
+    if (isSuccess && bookingIdForEmail) {
+      await this.sendTicketEmail(bookingIdForEmail, {
+        transactionId: vnpTxnRef,
+        paymentMethod: method.method_name,
+        amount: amount,
+        paymentStatus: 'completed',
+      });
+    }
 
     return { RspCode: '00', Message: 'Confirm Success' };
   }
@@ -848,6 +892,20 @@ export class PaymentsService {
         });
       }
     });
+
+    // Send email after successful payment
+    const existing = await this.prisma.payments.findUnique({
+      where: { transaction_id: orderId },
+    });
+
+    if (isSuccess && existing?.id_booking) {
+      await this.sendTicketEmail(existing.id_booking, {
+        transactionId: orderId,
+        paymentMethod: method.method_name,
+        amount: amount,
+        paymentStatus: 'completed',
+      });
+    }
 
     return { resultCode: 0, message: 'Confirm Success' };
   }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/di/dependency_injection.dart';
 import '../../../data/models/entity/product_entity.dart';
 import '../../../domain/services/product_service.dart';
+import '../../bloc/auth/auth_bloc.dart';
+import '../../bloc/auth/auth_state.dart';
 import '../buyticket/booking_flow_shell.dart';
 import '../buyticket/oder_summary.dart';
+import '../user/information_user.dart';
 import 'card_products.dart';
 import 'grid_products.dart';
 
@@ -234,7 +238,35 @@ class _ProductsPageState extends State<ProductsPage> {
     return parts.isEmpty ? 'Chưa chọn sản phẩm' : parts.join(', ');
   }
 
-  void _navigateToOrderSummary(BuildContext context) {
+  Future<void> _navigateToOrderSummary(BuildContext context) async {
+    // Check if user is logged in
+    final authState = context.read<AuthBloc>().state;
+    Map<String, dynamic>? guestInfo;
+    int? userId;
+    String? userEmail;
+    String? userFullName;
+    String? userPhone;
+
+    if (authState.isAuthenticated && authState.user != null) {
+      // User is logged in
+      userId = authState.user!.id;
+      userEmail = authState.user!.email;
+      userFullName = authState.user!.fullName;
+      userPhone = authState.user!.phoneNumber;
+    } else {
+      // User is not logged in, show guest information form
+      guestInfo = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(builder: (_) => const GuestInformationPage()),
+      );
+
+      // If user cancelled the form, don't proceed
+      if (guestInfo == null) return;
+
+      userEmail = guestInfo['email'] as String?;
+      userFullName = guestInfo['fullName'] as String?;
+      userPhone = guestInfo['phoneNumber'] as String?;
+    }
+
     // Convert selected seats to SeatSelection objects
     final seatSelections = widget.selectedSeats
         .map(
@@ -263,6 +295,8 @@ class _ProductsPageState extends State<ProductsPage> {
       }
     }
 
+    if (!context.mounted) return;
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => OrderSummaryPage(
@@ -278,6 +312,10 @@ class _ProductsPageState extends State<ProductsPage> {
           seats: seatSelections,
           seatIds: widget.seatIds,
           combos: comboSelections,
+          userId: userId,
+          userEmail: userEmail,
+          userFullName: userFullName,
+          userPhone: userPhone,
           onPaymentSucceeded: (status) {
             Navigator.of(context).popUntil((route) => route.isFirst);
             ScaffoldMessenger.of(context).showSnackBar(
