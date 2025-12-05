@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, KeyRound } from 'lucide-react';
 import Card from '../../components/common/Card';
@@ -111,6 +111,11 @@ const StaffsPage = () => {
     }
   };
 
+  const handleSearchChange = useCallback((value: string) => {
+    setPage(1);
+    setSearch(value);
+  }, []);
+
   const columns = useMemo(
     () => [
       {
@@ -173,10 +178,7 @@ const StaffsPage = () => {
           <div className="card__actions-group">
             <SearchInput
               placeholder="Tim theo ten hoac email..."
-              onSearch={(value) => {
-                setPage(1);
-                setSearch(value);
-              }}
+              onSearch={handleSearchChange}
             />
             <Button
               leftIcon={<Plus size={16} />}

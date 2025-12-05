@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
@@ -51,6 +51,27 @@ const MembersPage = () => {
     placeholderData: keepPreviousData,
   });
 
+  // Debug logs
+  useEffect(() => {
+    console.log('[MembersPage] page state changed to:', page);
+  }, [page]);
+
+  useEffect(() => {
+    console.log('[MembersPage] userFilter changed to:', userFilter);
+  }, [userFilter]);
+
+  useEffect(() => {
+    console.log('[MembersPage] Query will fetch with:', { page, userFilter });
+  }, [page, userFilter]);
+
+  useEffect(() => {
+    console.log('[MembersPage] Data received:', {
+      items: data?.items?.length ?? 0,
+      meta: data?.meta,
+      isLoading,
+    });
+  }, [data, isLoading]);
+
   const createMutation = useMutation({
     mutationFn: (values: MemberFormValues) => createMember(toPayload(values)),
     onSuccess: () => {
@@ -85,6 +106,14 @@ const MembersPage = () => {
       deleteMutation.mutate(member.id_member);
     }
   };
+
+  const handleSearchChange = useCallback((value: string) => {
+    console.log('[MembersPage] handleSearchChange called with:', value);
+    const trimmed = value.trim();
+    const parsed = trimmed ? Number(trimmed) : NaN;
+    setPage(1);
+    setUserFilter(Number.isNaN(parsed) ? undefined : parsed);
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -145,11 +174,7 @@ const MembersPage = () => {
           <div className="card__actions-group">
             <SearchInput
               placeholder="Nhap ID user de loc..."
-              onSearch={(value) => {
-                const parsed = Number(value);
-                setPage(1);
-                setUserFilter(Number.isNaN(parsed) ? undefined : parsed);
-              }}
+              onSearch={handleSearchChange}
             />
             <Button leftIcon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)}>
               Them thanh vien
@@ -165,7 +190,7 @@ const MembersPage = () => {
             <DataTable data={items} columns={columns} rowKey={(member) => member.id_member} />
             {meta && (
               <Pagination
-                page={meta.page}
+                page={page}
                 totalPages={meta.totalPages}
                 total={meta.total}
                 onChange={(nextPage) => setPage(nextPage)}
