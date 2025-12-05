@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
@@ -115,8 +115,29 @@ const MoviesPage = () => {
   };
 
   const handlePageChange = (nextPage: number) => {
+    console.log('[MoviesPage] handlePageChange called:', { from: page, to: nextPage });
     setPage(nextPage);
   };
+
+  const handleSearchChange = useCallback((value: string) => {
+    console.log('[MoviesPage] Search changed to:', value);
+    setPage(1);
+    setSearch(value);
+  }, []);
+
+  const handleStatusChange = useCallback((newStatus: MovieStatus | '') => {
+    console.log('[MoviesPage] Status changed to:', newStatus);
+    setPage(1);
+    setStatusFilter(newStatus);
+  }, []);
+
+  useEffect(() => {
+    console.log('[MoviesPage] page state changed to:', page);
+  }, [page]);
+
+  useEffect(() => {
+    console.log('[MoviesPage] Query will fetch with:', { page, search, status: statusFilter });
+  }, [page, search, statusFilter]);
 
   const columns = useMemo(
     () => [
@@ -182,10 +203,7 @@ const MoviesPage = () => {
           <div className="card__actions-group">
             <select
               value={statusFilter}
-              onChange={(e) => {
-                setPage(1);
-                setStatusFilter(e.target.value as MovieStatus | '');
-              }}
+              onChange={(e) => handleStatusChange(e.target.value as MovieStatus | '')}
               className="form-select"
               style={{ minWidth: '150px' }}
             >
@@ -196,10 +214,7 @@ const MoviesPage = () => {
             </select>
             <SearchInput
               placeholder="Tim kiem phim..."
-              onSearch={(value) => {
-                setPage(1);
-                setSearch(value);
-              }}
+              onSearch={handleSearchChange}
             />
             <Button leftIcon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)}>
               Them phim

@@ -13,6 +13,14 @@ class RagRepository {
     return await _remoteDataSource.search(query: query, limit: limit);
   }
 
+  /// Hybrid search: vector (semantic) + keyword (exact) for better fuzzy matching
+  Future<RagSearchResponseDto> hybridSearch({
+    required String query,
+    int? limit,
+  }) async {
+    return await _remoteDataSource.hybridSearch(query: query, limit: limit);
+  }
+
   Future<void> indexMovies() async {
     await _remoteDataSource.indexMovies();
   }

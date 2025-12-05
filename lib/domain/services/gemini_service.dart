@@ -14,7 +14,7 @@ class GeminiService {
     }
 
     _model = GenerativeModel(
-      model: 'gemini-flash-latest',
+      model: dotenv.env['GEMENI_MODEL'] ?? '',
       apiKey: apiKey,
       systemInstruction: Content.system(_getCinemaSystemInstruction()),
       generationConfig: GenerationConfig(
@@ -64,7 +64,8 @@ class GeminiService {
 
       if (_ragService != null) {
         try {
-          final ragResult = await _ragService!.search(message);
+          // Use hybrid search for better fuzzy matching
+          final ragResult = await _ragService!.hybridSearch(message, limit: 5);
           print(
             '🔍 [GeminiService] RAG result: ${ragResult != null ? "Found" : "Null"}',
           );

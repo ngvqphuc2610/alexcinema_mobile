@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/datasources/booking_remote_data_source.dart';
@@ -81,7 +82,11 @@ Future<void> configureDependencies() async {
     }
   }
 
+  // Initialize Hive for local storage
+  await Hive.initFlutter();
+  
   _registerExternal();
+  _registerLocalStorage();
   _registerDataSources();
   _registerRepositories();
   _registerServices();
@@ -101,6 +106,15 @@ void _registerExternal() {
     sl.registerLazySingleton<ApiClient>(
       () => ApiClient(baseUrl: _resolveBaseUrl(), httpClient: sl()),
     );
+  }
+}
+
+/// Register local storage services
+void _registerLocalStorage() {
+  if (!sl.isRegistered<ChatLocalStorage>()) {
+    final chatStorage = ChatLocalStorage();
+    chatStorage.init(); // Initialize Hive box
+    sl.registerLazySingleton<ChatLocalStorage>(() => chatStorage);
   }
 }
 
@@ -238,7 +252,7 @@ void _registerBlocs() {
   sl.registerFactory<MembershipBloc>(() => MembershipBloc(sl()));
   sl.registerFactory<PaymentMethodCubit>(() => PaymentMethodCubit(sl()));
   sl.registerFactory<PaymentCubit>(() => PaymentCubit(sl(), sl()));
-  sl.registerFactory<ChatCubit>(() => ChatCubit(sl(), sl()));
+  sl.registerFactory<ChatCubit>(() => ChatCubit(sl(), sl(), sl()));
 }
 
 String _resolveBaseUrl() {

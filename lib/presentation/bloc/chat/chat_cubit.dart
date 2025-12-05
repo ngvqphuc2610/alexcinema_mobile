@@ -1,17 +1,22 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/entity/chat_message_entity.dart';
+import '../../../data/local/chat_local_storage.dart';
 import '../../../domain/services/gemini_service.dart';
 import '../../../domain/services/speech_service.dart';
 import 'chat_state.dart';
 
 class ChatCubit extends Cubit<ChatState> {
-  ChatCubit(this._geminiService, this._speechService)
-    : super(const ChatState()) {
+  ChatCubit(
+    this._geminiService,
+    this._speechService,
+    this._localStorage,
+  ) : super(const ChatState()) {
     _initialize();
   }
 
   final GeminiService _geminiService;
   final SpeechService _speechService;
+  final ChatLocalStorage _localStorage;
 
   Future<void> _initialize() async {
     // Initialize speech services
@@ -20,13 +25,31 @@ class ChatCubit extends Cubit<ChatState> {
 
     // Load suggestions
     final suggestions = await _geminiService.getSuggestions();
-    emit(state.copyWith(suggestions: suggestions));
+    
+    // Load saved messages from storage
+    final savedMessages = _localStorage.loadMessages();
+    
+    if (savedMessages.isNotEmpty) {
+      print('📥 [ChatCubit] Loaded ${savedMessages.length} saved messages');
+      emit(state.copyWith(
+        messages: savedMessages,
+        suggestions: suggestions,
+      ));
+      return;
+    }
 
-    // Add welcome message
+    // If no saved messages, add welcome message
     final welcomeMessage = ChatMessage.assistant(
       'Xin chào! Tôi là trợ lý AI của Alex Cinema. Tôi có thể giúp bạn tìm phim, kiểm tra lịch chiếu, hoặc đặt vé. Bạn cần hỗ trợ gì?',
     );
-    emit(state.copyWith(messages: [welcomeMessage]));
+    
+    // Save welcome message
+    await _localStorage.saveMessage(welcomeMessage);
+    
+    emit(state.copyWith(
+      messages: [welcomeMessage],
+      suggestions: suggestions,
+    ));
   }
 
   /// Send text message
@@ -56,6 +79,11 @@ class ChatCubit extends Cubit<ChatState> {
           type: MessageType.booking,
           bookingData: bookingIntent,
         );
+        
+        // Save messages to storage
+        await _localStorage.saveMessage(userMessage);
+        await _localStorage.saveMessage(assistantMessage);
+        
         emit(
           state.copyWith(
             messages: [...state.messages, assistantMessage],
@@ -65,6 +93,11 @@ class ChatCubit extends Cubit<ChatState> {
       } else {
         // Normal chat response
         final assistantMessage = ChatMessage.assistant(response);
+        
+        // Save messages to storage
+        await _localStorage.saveMessage(userMessage);
+        await _localStorage.saveMessage(assistantMessage);
+        
         emit(
           state.copyWith(
             messages: [...state.messages, assistantMessage],
@@ -132,6 +165,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   /// Clear chat history
   void clearChat() {
+    _localStorage.clearMessages();
     _geminiService.clearHistory();
     emit(const ChatState());
     _initialize();

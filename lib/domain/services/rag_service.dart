@@ -28,6 +28,27 @@ class RagService {
     }
   }
 
+  /// Hybrid search: combines vector (semantic) + keyword (exact) search
+  /// Better for fuzzy matching like "doraamon" → "Doraemon"
+  Future<RagSearchData?> hybridSearch(String query, {int limit = 5}) async {
+    try {
+      print('🔍🔍 [RagService] Hybrid search for: $query (limit: $limit)');
+      final response = await _repository.hybridSearch(query: query, limit: limit);
+      
+      if (response.success) {
+        print('✅ [RagService] Hybrid search - Context length: ${response.data.context.length}');
+        print('✅ [RagService] Hybrid search - Sources: ${response.data.sources.length}');
+        return response.data;
+      }
+      
+      print('⚠️ [RagService] Hybrid search not successful, falling back to regular search');
+      return await search(query, limit: limit);
+    } catch (e) {
+      print('❌ [RagService] Hybrid search error: $e, falling back to regular search');
+      return await search(query, limit: limit);
+    }
+  }
+
   /// Trigger indexing of all data (admin function)
   Future<bool> indexAllData() async {
     try {

@@ -32,6 +32,30 @@ class RagRemoteDataSource {
     }
   }
 
+  /// Hybrid search: combines vector (semantic) + keyword (exact) search
+  /// Better for fuzzy matching like "doraamon" → "Doraemon"
+  Future<RagSearchResponseDto> hybridSearch({
+    required String query,
+    int? limit,
+  }) async {
+    final requestDto = RagSearchRequestDto(query: query, limit: limit);
+    print('🔍🔍 [RagRemoteDataSource] Hybrid search request: ${requestDto.toJson()}');
+
+    try {
+      final response = await _apiClient.post(
+        'rag/hybrid-search',
+        body: requestDto.toJson(),
+      );
+
+      print('✅ [RagRemoteDataSource] Hybrid search response received');
+      final result = RagSearchResponseDto.fromJson(response);
+      return result;
+    } catch (e) {
+      print('❌ [RagRemoteDataSource] Hybrid search error: $e');
+      rethrow;
+    }
+  }
+
   /// Trigger indexing of movies
   Future<void> indexMovies() async {
     await _apiClient.post('rag/index/movies');

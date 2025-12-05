@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
@@ -98,6 +98,11 @@ const SeatsPage = () => {
     }
   };
 
+  const handleSearchChange = useCallback((value: string) => {
+    setPage(1);
+    setSearch(value);
+  }, []);
+
   const columns = useMemo(
     () => [
       {
@@ -177,10 +182,7 @@ const SeatsPage = () => {
             </select>
             <SearchInput
               placeholder="Tim theo hang ghe..."
-              onSearch={(value) => {
-                setPage(1);
-                setSearch(value);
-              }}
+              onSearch={handleSearchChange}
             />
             <Button leftIcon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)} disabled={screensQuery.isLoading}>
               Them ghe

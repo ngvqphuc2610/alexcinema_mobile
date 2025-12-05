@@ -136,6 +136,7 @@ export class QdrantService implements OnModuleInit {
         queryVector: number[],
         limit: number = 5,
         filter?: Record<string, any>,
+        scoreThreshold: number = 0.7 
     ): Promise<SearchResult[]> {
         const url = `${this.qdrantUrl}/collections/${collectionName}/points/search`;
 
@@ -145,6 +146,7 @@ export class QdrantService implements OnModuleInit {
                     vector: queryVector,
                     limit,
                     with_payload: true,
+                    score_threshold: scoreThreshold,
                     filter,
                 }),
             );

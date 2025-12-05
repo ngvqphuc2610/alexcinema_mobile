@@ -90,9 +90,9 @@ dependencies:
   carousel_slider: ^5.1.1
   smooth_page_indicator: ^1.2.1
   flutter_zalopay_sdk: ^0.1.14
-  app_links: ^6.4.1
+  app_links: ^6.4.1 # Deep link handling
   google_generative_ai: ^0.4.7
-  flutter_tts: ^4.2.3
+  flutter_tts: ^4.2.3 # Text-to-Speech
   vector_math: ^2.2.0
   web_socket_client: ^0.2.1
 

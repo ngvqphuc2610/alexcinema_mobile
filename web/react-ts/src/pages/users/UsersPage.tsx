@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Pencil, KeyRound, Trash2 } from 'lucide-react';
 import Card from '../../components/common/Card';
@@ -94,6 +94,11 @@ const UsersPage = () => {
     }
   };
 
+  const handleSearchChange = useCallback((value: string) => {
+    setPage(1);
+    setSearch(value);
+  }, []);
+
   const tableColumns = useMemo(
     () => [
       {
@@ -174,10 +179,7 @@ const UsersPage = () => {
         actions={
           <SearchInput
             placeholder="Tim kiem theo ten, email..."
-            onSearch={(value) => {
-              setPage(1);
-              setSearch(value);
-            }}
+            onSearch={handleSearchChange}
           />
         }
       >
