@@ -35,6 +35,17 @@ export class RagController {
         };
     }
 
+    @Post('hybrid-search')
+    @ApiOperation({ summary: 'Hybrid search: combines vector (semantic) + keyword (exact) search' })
+    @ApiResponse({ status: 200, description: 'Combined search results with better fuzzy matching' })
+    async hybridSearch(@Body() dto: SearchDto) {
+        const result = await this.ragService.hybridSearch(dto.query, dto.limit || 5);
+        return {
+            success: true,
+            data: result,
+        };
+    }
+
     @Post('index/movies')
     @ApiOperation({ summary: 'Index all movies into vector database' })
     async indexMovies() {

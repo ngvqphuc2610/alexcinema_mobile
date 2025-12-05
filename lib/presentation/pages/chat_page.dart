@@ -20,8 +20,7 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          ChatCubit(GetIt.I<GeminiService>(), GetIt.I<SpeechService>()),
+      create: (_) => GetIt.I<ChatCubit>(),
       child: const _ChatPageContent(),
     );
   }

@@ -39,7 +39,7 @@ export class DocumentIndexerService {
         this.logger.warn('Resetting Cinemas collection...');
         await this.qdrant.deleteCollection('cinemas');
         await this.qdrant.createCollection('cinemas');
-        await this.indexCinemas(); 
+        await this.indexCinemas();
     }
 
     /**
@@ -52,6 +52,7 @@ export class DocumentIndexerService {
             select: {
                 id_movie: true,
                 title: true,
+                original_title: true,
                 description: true,
                 director: true,
                 actors: true,
@@ -110,7 +111,7 @@ export class DocumentIndexerService {
                 await new Promise(resolve => setTimeout(resolve, 200));
             }
 
-            
+
         }
 
         if (points.length > 0) {
@@ -226,7 +227,7 @@ export class DocumentIndexerService {
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
-                
+
             } catch (error) {
                 this.logger.error(`Error indexing showtime ${showtime.id_showtime}: ${error.message}`);
                 // Continue with next showtime
@@ -292,7 +293,7 @@ export class DocumentIndexerService {
                 await new Promise(resolve => setTimeout(resolve, 200));
             }
 
-            
+
         }
 
         if (points.length > 0) {
@@ -375,7 +376,7 @@ export class DocumentIndexerService {
                         await new Promise(resolve => setTimeout(resolve, 100));
                     }
 
-                    
+
                 } catch (error) {
                     this.logger.error(`Error indexing cinema ${cinema.id_cinema} (${cinema.cinema_name}): ${error.message}`);
                     this.logger.error(error.stack);
@@ -430,12 +431,12 @@ export class DocumentIndexerService {
     }
 
 
-   async countMoviesInDb(): Promise<number> {
+    async countMoviesInDb(): Promise<number> {
         return this.prisma.movies.count();
     }
     async countMoviesInQdrant(): Promise<number> {
         // Giả sử QdrantService của bạn có method này, nếu chưa có hãy xem phần chú thích cuối bài
-        return this.qdrant.countCollection('movies'); 
+        return this.qdrant.countCollection('movies');
     }
 
     async countShowtimesInDb(): Promise<number> {
@@ -475,30 +476,45 @@ export class DocumentIndexerService {
 
     // Helper methods to create searchable text
     private createMovieText(movie: any, genres: string): string {
-        return `
-      Tên phim: ${movie.title}
-      Mô tả: ${movie.description || ''}
-      Thể loại: ${genres || ''}
-      Đạo diễn: ${movie.director || ''}
-      Diễn viên: ${movie.actors || ''}
-      Thời lượng: ${movie.duration || ''} phút
-      Ngôn ngữ: ${movie.language || ''}
-      Quốc gia: ${movie.country || ''}
-      Độ tuổi: ${movie.age_restriction || ''}
-    `.trim();
-    }
+        // Create RICH text for better semantic search and fuzzy matching
+        // Repeat title multiple times to boost its importance in the embedding
+        // Include original_title to catch alternative spellings/names
+        const text = `
+${movie.title} ${movie.title} ${movie.title}
+${movie.original_title || movie.title}
+Tên phim: ${movie.title}
+Tên gốc: ${movie.original_title || ''}
+Thể loại phim: ${genres || ''}
+Thể loại: ${genres || ''}
+Mô tả phim: ${movie.description || ''}
+${movie.description || ''}
+Đạo diễn bởi: ${movie.director || ''}
+Đạo diễn: ${movie.director || ''}
+Diễn viên chính: ${movie.actors || ''}
+Cast: ${movie.actors || ''}
+Thời lượng chiếu: ${movie.duration || ''} phút
+Ngôn ngữ: ${movie.language || ''}
+Tiếng: ${movie.language || ''}
+Quốc gia sản xuất: ${movie.country || ''}
+Xuất xứ: ${movie.country || ''}
+Độ tuổi giới hạn: ${movie.age_restriction || ''}
+Phân loại: ${movie.age_restriction || ''}
+`.trim();
 
+        return text;
+    }  
+  
     private createShowtimeText(showtime: any, genres: string): string {
         const date = new Date(showtime.show_date);
         const startTime = showtime.start_time.toTimeString().substring(0, 5);
-        return `
-      Phim: ${showtime.movie.title}
-      Thể loại: ${genres}
-      Rạp: ${showtime.screen.cinema.cinema_name}
+        return ` 
+      Phim: ${showtime.movie.title} 
+      Thể loại: ${genres} 
+      Rạp : ${showtime.screen.cinema.cinema_name}
       Địa chỉ: ${showtime.screen.cinema.address}
-      Phòng: ${showtime.screen.screen_name}
+      Phòng : ${showtime.screen.screen_name}
       Ngày chiếu: ${date.toLocaleDateString('vi-VN')}
-      Giờ chiếu: ${startTime}
+      Giờ chiếu: ${startTime} 
       Định dạng: ${showtime.format || '2D'}
       Ngôn ngữ: ${showtime.language || ''}
       Phụ đề: ${showtime.subtitle || ''}
@@ -507,30 +523,30 @@ export class DocumentIndexerService {
     }
 
     private createPromotionText(promotion: any): string {
-        return `
+        return `        
       Khuyến mãi: ${promotion.title}
       Mô tả: ${promotion.description || ''}
-      Mã: ${promotion.promotion_code}
+      Mã: ${promotion.promotion_code} 
       Giảm giá: ${promotion.discount_percent?.toNumber() || 0}%
-      Giảm tiền: ${promotion.discount_amount?.toNumber().toLocaleString('vi-VN') || 0} VNĐ
+      Giảm tiền : ${promotion.discount_amount?.toNumber().toLocaleString('vi-VN') || 0} VNĐ
       Thời gian: ${new Date(promotion.start_date).toLocaleDateString('vi-VN')} - ${new Date(promotion.end_date).toLocaleDateString('vi-VN')}
-      Mua tối thiểu: ${promotion.min_purchase?.toNumber().toLocaleString('vi-VN') || 0} VNĐ
-    `.trim();
-    }
-
-    private createCinemaText(cinema: any): string {
-        const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+      Mua tối thiểu : ${promotion.min_purchase?.toNumber().toLocaleString('vi-VN') || 0} VNĐ
+    `.trim();  
+    }  
+  
+    private createCinemaText(cinema: any): string { 
+                const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
         const operationHoursText = cinema.operation_hours
             .map((oh: any) => `${dayNames[oh.day_of_week]}: ${oh.opening_time?.toTimeString().substring(0, 5)} - ${oh.closing_time?.toTimeString().substring(0, 5)}`)
             .join(', ');
 
-        return `
-      Rạp chiếu phim: ${cinema.cinema_name}
-      Địa chỉ: ${cinema.address}
-      Thành phố: ${cinema.city}
-      Mô tả: ${cinema.description || ''}
-      Số điện thoại: ${cinema.contact_number || ''}
-      Email: ${cinema.email || ''}
+        return `  
+      Rạp chiếu phim: ${cinema.cinema_name }
+      Địa chỉ: ${cinema.address} 
+      Thành phố: ${cinema.city} 
+      Mô tả: ${cinema.description || ''} 
+      Số điện thoại : ${cinema.contact_number || ''}   
+      Email: ${cinema.email || ''} 
       Số phòng chiếu: ${cinema.screens.length}
       Loại phòng: ${[...new Set(cinema.screens.map((s: any) => s.screen_type?.type_name).filter(Boolean))].join(', ')}
       Giờ mở cửa: ${operationHoursText}
