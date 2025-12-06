@@ -1,3 +1,4 @@
+import 'package:alexcinema/data/local/chat_local_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
@@ -31,6 +32,7 @@ import '../../data/repositories/showtime_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/services/api_client.dart';
 import '../../data/services/seat_service.dart';
+import '../../data/services/socket_service.dart';
 import '../../data/services/token_storage.dart';
 import '../../domain/services/auth_service.dart';
 import '../../domain/services/booking_service.dart';
@@ -50,6 +52,10 @@ import '../../domain/services/speech_service.dart';
 import '../../domain/services/rag_service.dart';
 import '../../data/datasources/rag_remote_data_source.dart';
 import '../../data/repositories/rag_repository.dart';
+import '../../data/datasources/contact_remote_data_source.dart';
+import '../../data/repositories/contact_repository.dart';
+import '../../domain/services/contact_service.dart';
+import '../../presentation/bloc/contact/contact_cubit.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
 import '../../presentation/bloc/cinema/cinema_bloc.dart';
 import '../../presentation/bloc/entertainment/entertainment_bloc.dart';
@@ -84,7 +90,7 @@ Future<void> configureDependencies() async {
 
   // Initialize Hive for local storage
   await Hive.initFlutter();
-  
+
   _registerExternal();
   _registerLocalStorage();
   _registerDataSources();
@@ -167,6 +173,9 @@ void _registerDataSources() {
   sl.registerLazySingleton<RagRemoteDataSource>(
     () => RagRemoteDataSource(sl()),
   );
+  sl.registerLazySingleton<ContactRemoteDataSource>(
+    () => ContactRemoteDataSource(sl()),
+  );
 }
 
 void _registerRepositories() {
@@ -204,6 +213,7 @@ void _registerRepositories() {
   );
   sl.registerLazySingleton<PaymentRepository>(() => PaymentRepository(sl()));
   sl.registerLazySingleton<RagRepository>(() => RagRepository(sl()));
+  sl.registerLazySingleton<ContactRepository>(() => ContactRepository(sl()));
 }
 
 void _registerServices() {
@@ -236,6 +246,12 @@ void _registerServices() {
 
   // Seat Service
   sl.registerLazySingleton<SeatService>(() => SeatService(sl()));
+
+  // Socket Service for real-time seat locking
+  sl.registerLazySingleton<SocketService>(() => SocketService());
+
+  // Contact Service
+  sl.registerLazySingleton<ContactService>(() => ContactService(sl()));
 }
 
 void _registerBlocs() {
@@ -253,6 +269,7 @@ void _registerBlocs() {
   sl.registerFactory<PaymentMethodCubit>(() => PaymentMethodCubit(sl()));
   sl.registerFactory<PaymentCubit>(() => PaymentCubit(sl(), sl()));
   sl.registerFactory<ChatCubit>(() => ChatCubit(sl(), sl(), sl()));
+  sl.registerFactory<ContactCubit>(() => ContactCubit(sl()));
 }
 
 String _resolveBaseUrl() {

@@ -244,6 +244,143 @@ export class MailService {
     }
   }
 
+  async sendContactNotificationEmail(payload: {
+    customerName: string;
+    customerEmail: string;
+    subject: string;
+    message: string;
+    contactId: number;
+  }) {
+    this.logger.log(`📨 Attempting to send contact notification email for contact #${payload.contactId}`);
+    this.ensureTransporter();
+
+    try {
+      const subject = `[Alex Cinema] Yêu cầu hỗ trợ mới: ${payload.subject}`;
+
+      const text = [
+        'Bạn nhận được yêu cầu hỗ trợ mới từ khách hàng:',
+        '',
+        `Từ: ${payload.customerName} (${payload.customerEmail})`,
+        `Tiêu đề: ${payload.subject}`,
+        '',
+        'Nội dung:',
+        payload.message,
+        '',
+        `ID Liên hệ: #${payload.contactId}`,
+      ].join('\n');
+
+      const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #111827; line-height: 1.6; max-width: 640px; margin: 0 auto;">
+          <h2 style="color:#4F46E5; margin-bottom: 8px;">Yêu cầu hỗ trợ mới</h2>
+          <p style="margin:4px 0 12px;">Bạn nhận được yêu cầu hỗ trợ mới từ khách hàng:</p>
+          
+          <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#F9FAFB; margin: 16px 0;">
+            <p style="margin:4px 0;"><strong>Từ:</strong> ${payload.customerName}</p>
+            <p style="margin:4px 0;"><strong>Email:</strong> <a href="mailto:${payload.customerEmail}">${payload.customerEmail}</a></p>
+            <p style="margin:4px 0;"><strong>Tiêu đề:</strong> ${payload.subject}</p>
+          </div>
+          
+          <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#FFFFFF; margin: 16px 0;">
+            <p style="margin:0 0 8px;"><strong>Nội dung:</strong></p>
+            <p style="margin:0; white-space: pre-wrap;">${payload.message}</p>
+          </div>
+          
+          <p style="margin:16px 0 4px; font-size:12px; color:#6B7280;">
+            ID Liên hệ: #${payload.contactId}
+          </p>
+        </div>
+      `;
+
+      this.logger.debug(`📤 Sending contact notification from: ${this.fromAddress} to: ${this.fromAddress}`);
+
+      const info = await this.transporter!.sendMail({
+        from: this.fromAddress,
+        to: this.fromAddress, // Send to admin
+        replyTo: payload.customerEmail, // Allow direct reply
+        subject,
+        text,
+        html,
+      });
+
+      this.logger.log(`✅ Contact notification email sent successfully for contact #${payload.contactId}`);
+      this.logger.debug(`📧 Message ID: ${info.messageId}`);
+
+      return info;
+    } catch (error) {
+      this.logger.error(`❌ Failed to send contact notification email for contact #${payload.contactId}`);
+      this.logger.error(`Error: ${error.message}`);
+      this.logger.error(error.stack);
+      // Don't throw - we still want to save the contact even if email fails
+      return null;
+    }
+  }
+
+  async sendContactConfirmationEmail(payload: {
+    to: string;
+    name: string;
+    subject: string;
+  }) {
+    this.logger.log(`📨 Attempting to send contact confirmation email to: ${payload.to}`);
+    this.ensureTransporter();
+
+    try {
+      const subject = `Đã nhận yêu cầu hỗ trợ của bạn: ${payload.subject}`;
+
+      const text = [
+        `Xin chào ${payload.name},`,
+        '',
+        'Cảm ơn bạn đã liên hệ với Alex Cinema!',
+        '',
+        `Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn về: "${payload.subject}"`,
+        '',
+        'Chúng tôi sẽ phản hồi bạn qua email trong vòng 24 giờ.',
+        '',
+        'Trân trọng,',
+        'Đội ngũ hỗ trợ Alex Cinema',
+      ].join('\n');
+
+      const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #111827; line-height: 1.6; max-width: 640px; margin: 0 auto;">
+          <h2 style="color:#4F46E5; margin-bottom: 8px;">Đã nhận yêu cầu hỗ trợ</h2>
+          <p>Xin chào <strong>${payload.name}</strong>,</p>
+          <p>Cảm ơn bạn đã liên hệ với <strong>Alex Cinema</strong>!</p>
+          
+          <div style="border:1px solid #E5E7EB; border-radius:12px; padding:16px; background:#F9FAFB; margin: 16px 0;">
+            <p style="margin:0;">
+              Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn về: 
+              <strong>"${payload.subject}"</strong>
+            </p>
+          </div>
+          
+          <p>Chúng tôi sẽ phản hồi bạn qua email trong vòng <strong>24 giờ</strong>.</p>
+          
+          <p style="margin-top:24px;">
+            Trân trọng,<br/>
+            <strong>Đội ngũ hỗ trợ Alex Cinema</strong>
+          </p>
+        </div>
+      `;
+
+      const info = await this.transporter!.sendMail({
+        from: this.fromAddress,
+        to: payload.to,
+        subject,
+        text,
+        html,
+      });
+
+      this.logger.log(`✅ Contact confirmation email sent successfully to: ${payload.to}`);
+      this.logger.debug(`📧 Message ID: ${info.messageId}`);
+
+      return info;
+    } catch (error) {
+      this.logger.error(`❌ Failed to send contact confirmation email to: ${payload.to}`);
+      this.logger.error(`Error: ${error.message}`);
+      // Don't throw - we still want to save the contact even if email fails
+      return null;
+    }
+  }
+
   private buildResetLink(token: string): string {
     const normalizedBase = this.appUrl.endsWith('/')
       ? this.appUrl.slice(0, -1)

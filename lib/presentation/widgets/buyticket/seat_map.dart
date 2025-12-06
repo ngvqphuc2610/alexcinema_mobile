@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../../core/di/injection_container.dart';
 import '../../../data/models/entity/movie_entity.dart';
 import '../../../data/models/entity/seat_entity.dart';
 import '../../../data/models/entity/showtime_entity.dart';
 import '../../../data/services/seat_service.dart';
+import '../../../data/services/socket_service.dart';
 import 'booking_flow_shell.dart';
 import '../products/products_page.dart';
 import 'ticket_type_selector.dart';
@@ -48,10 +50,13 @@ class SeatMapPage extends StatefulWidget {
 class _SeatMapPageState extends State<SeatMapPage> {
   List<List<Seat?>> _layout = [];
   final Set<int> _selected = {};
+  final Set<int> _lockedByOthers = {}; // Seats locked by other users
   bool _isLoading = true;
   String? _errorMessage;
+  bool _socketConnected = false;
 
   late final SeatService _seatService;
+  late final SocketService _socketService;
 
   int get _totalTickets =>
       widget.ticketOptions.fold(0, (sum, opt) => sum + opt.quantity);
@@ -83,7 +88,97 @@ class _SeatMapPageState extends State<SeatMapPage> {
   void initState() {
     super.initState();
     _seatService = sl<SeatService>();
+    _socketService = sl<SocketService>();
+    _initializeSocket();
     _loadSeats();
+  }
+
+  Future<void> _initializeSocket() async {
+    try {
+      // Get API base URL from .env file
+      final apiUrl = dotenv.env['FLUTTER_API_URL'] ?? 'http://10.0.2.2:3000';
+
+      print('🔌 Connecting to Socket.IO at: $apiUrl');
+
+      // Setup callbacks
+      _socketService.onSeatLocked = (seatId, sessionId) {
+        if (mounted) {
+          setState(() {
+            _lockedByOthers.add(seatId);
+            // Remove from selected if we had it selected
+            _selected.remove(seatId);
+          });
+          print('🔒 Seat $seatId locked by another user');
+        }
+      };
+
+      _socketService.onSeatUnlocked = (seatId) {
+        if (mounted) {
+          setState(() {
+            _lockedByOthers.remove(seatId);
+          });
+          print('🔓 Seat $seatId unlocked');
+        }
+      };
+
+      _socketService.onConnected = () {
+        if (mounted) {
+          setState(() => _socketConnected = true);
+          print('✅ Socket connected! Session: ${_socketService.sessionId}');
+          _joinShowtimeRoom();
+        }
+      };
+
+      _socketService.onDisconnected = () {
+        if (mounted) {
+          setState(() => _socketConnected = false);
+          print('❌ Socket disconnected');
+        }
+      };
+
+      _socketService.onError = (error) {
+        print('⚠️ Socket error: $error');
+      };
+
+      // Connect to socket
+      _socketService.connect(apiUrl);
+    } catch (e) {
+      print('❌ Error initializing socket: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi kết nối real-time: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinShowtimeRoom() async {
+    try {
+      final lockedSeats = await _socketService.joinShowtime(widget.showtime.id);
+      if (mounted) {
+        setState(() {
+          _lockedByOthers.clear();
+          for (final seat in lockedSeats) {
+            final seatId = seat['seatId'] as int?;
+            final sessionId = seat['sessionId'] as String?;
+            // Only add if locked by others (not by us)
+            if (seatId != null &&
+                sessionId != null &&
+                sessionId != _socketService.sessionId) {
+              _lockedByOthers.add(seatId);
+            }
+          }
+        });
+        print(
+          '📺 Joined showtime ${widget.showtime.id}, ${_lockedByOthers.length} seats locked by others',
+        );
+      }
+    } catch (e) {
+      print('❌ Error joining showtime: $e');
+    }
   }
 
   Future<void> _loadSeats() async {
@@ -232,18 +327,33 @@ class _SeatMapPageState extends State<SeatMapPage> {
     return selectedSeats.map((s) => s.label).join(', ');
   }
 
-  void _toggleSeat(Seat seat) {
+  Future<void> _toggleSeat(Seat seat) async {
     if (seat.isBooked) return;
-    final selectedByType = _selectedByType;
-    final allowedByType = _allowedByType;
 
-    if (_selected.contains(seat.id)) {
-      setState(() {
-        _selected.remove(seat.id);
-      });
+    // Check if locked by another user
+    if (_lockedByOthers.contains(seat.id)) {
+      _showInfo('Ghế này đã có người khác chọn');
       return;
     }
 
+    final selectedByType = _selectedByType;
+    final allowedByType = _allowedByType;
+
+    // Deselect - unlock seat
+    if (_selected.contains(seat.id)) {
+      try {
+        await _socketService.unlockSeat(widget.showtime.id, seat.id);
+        setState(() {
+          _selected.remove(seat.id);
+        });
+      } catch (e) {
+        print('❌ Error unlocking seat: $e');
+        _showInfo('Lỗi khi bỏ chọn ghế');
+      }
+      return;
+    }
+
+    // Validation
     final maxForType = allowedByType[seat.type] ?? 0;
     final currentForType = selectedByType[seat.type] ?? 0;
     if (maxForType == 0) {
@@ -259,9 +369,16 @@ class _SeatMapPageState extends State<SeatMapPage> {
       return;
     }
 
-    setState(() {
-      _selected.add(seat.id);
-    });
+    // Select - lock seat
+    try {
+      await _socketService.lockSeat(widget.showtime.id, seat.id);
+      setState(() {
+        _selected.add(seat.id);
+      });
+    } catch (e) {
+      print('❌ Error locking seat: $e');
+      _showInfo('Không thể chọn ghế này. Có thể đã có người chọn.');
+    }
   }
 
   void _showInfo(String message) {
@@ -269,6 +386,18 @@ class _SeatMapPageState extends State<SeatMapPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  void dispose() {
+    // Unlock all selected seats when leaving
+    for (final seatId in _selected) {
+      _socketService.unlockSeat(widget.showtime.id, seatId).catchError((e) {
+        print('Error unlocking seat on dispose: $e');
+        return false; // Return bool to satisfy Future<bool>
+      });
+    }
+    super.dispose();
   }
 
   @override
@@ -281,7 +410,8 @@ class _SeatMapPageState extends State<SeatMapPage> {
 
     return BookingFlowShell(
       title: widget.movie.title,
-      subtitle: 'Chọn ghế - $timeLabel $dateLabel',
+      subtitle:
+          'Chọn ghế - $timeLabel $dateLabel ${_socketConnected ? "🟢" : "🔴"}',
       summaryLines: [
         '${_selected.length}/${_totalTickets} Ghế: ${_selected.isEmpty ? '-' : _getSelectedSeatLabels()}',
         'Tổng cộng: ${_formatCurrency(_totalPrice)}',
@@ -410,11 +540,13 @@ class _SeatMapPageState extends State<SeatMapPage> {
                     return const SizedBox(width: 24);
                   }
                   final isSelected = _selected.contains(seat.id);
+                  final isLockedByOther = _lockedByOthers.contains(seat.id);
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: _SeatTile(
                       seat: seat,
                       isSelected: isSelected,
+                      isLockedByOther: isLockedByOther,
                       onTap: () => _toggleSeat(seat),
                     ),
                   );
@@ -432,56 +564,131 @@ class _SeatMapPageState extends State<SeatMapPage> {
   }
 }
 
-class _SeatTile extends StatelessWidget {
+class _SeatTile extends StatefulWidget {
   const _SeatTile({
     required this.seat,
     required this.isSelected,
+    this.isLockedByOther = false,
     required this.onTap,
   });
 
   final Seat seat;
   final bool isSelected;
+  final bool isLockedByOther;
   final VoidCallback onTap;
+
+  @override
+  State<_SeatTile> createState() => _SeatTileState();
+}
+
+class _SeatTileState extends State<_SeatTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isLockedByOther) {
+      _controller = AnimationController(
+        duration: const Duration(milliseconds: 1500),
+        vsync: this,
+      )..repeat(reverse: true);
+
+      _pulseAnimation = Tween<double>(
+        begin: 1.0,
+        end: 1.08,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    } else {
+      // Create dummy controller to avoid null checks
+      _controller = AnimationController(
+        duration: const Duration(milliseconds: 1),
+        vsync: this,
+      );
+      _pulseAnimation = Tween<double>(
+        begin: 1.0,
+        end: 1.0,
+      ).animate(_controller);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     Color bg;
     Color border;
-    if (seat.isBooked) {
-      bg = Colors.grey.shade300;
-      border = Colors.grey.shade400;
-    } else if (isSelected) {
-      bg = const Color(0xFF00A8E8);
+    Color textColor;
+
+    if (widget.seat.isBooked) {
+      // Permanently booked - dark grey
+      bg = Colors.grey.shade400;
+      border = Colors.grey.shade600;
+      textColor = Colors.white70;
+    } else if (widget.isLockedByOther) {
+      // Locked by other user - warm yellow-orange with animation
+      bg = const Color.fromARGB(255, 255, 95, 77); // Warm yellow-orange
+      border = const Color.fromARGB(255, 255, 95, 77); // Darker orange border
+      textColor = Colors.white;
+    } else if (widget.isSelected) {
+      // Selected by current user - blue
+      bg = const Color.fromARGB(255, 0, 168, 232);
       border = bg;
-    } else if (seat.type == SeatType.doubleSeat) {
-      bg = const Color(0xFF6A1B9A);
+      textColor = Colors.white;
+    } else if (widget.seat.type == SeatType.doubleSeat) {
+      // Available double seat - purple
+      bg = const Color.fromARGB(255, 106, 27, 154);
       border = bg;
+      textColor = Colors.white;
     } else {
-      bg = const Color(0xFFFFA726);
+      // Available single seat - light orange
+      bg = const Color.fromARGB(255, 255, 167, 38);
       border = bg;
+      textColor = Colors.white;
+    }
+
+    Widget child = widget.isLockedByOther
+        ? const Icon(
+            Icons.person, // User icon instead of lock
+            color: Colors.white,
+            size: 20,
+          )
+        : Text(
+            widget.seat.label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          );
+
+    Widget seatWidget = Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 1.5),
+      ),
+      child: child,
+    );
+
+    // Wrap with animation if locked by other
+    if (widget.isLockedByOther) {
+      seatWidget = ScaleTransition(scale: _pulseAnimation, child: seatWidget);
     }
 
     return InkWell(
-      onTap: seat.isBooked ? null : onTap,
+      onTap: (widget.seat.isBooked || widget.isLockedByOther)
+          ? null
+          : widget.onTap,
       borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: border, width: 1.2),
-        ),
-        child: Text(
-          seat.label,
-          style: TextStyle(
-            color: seat.isBooked ? Colors.black54 : Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ),
+      child: seatWidget,
     );
   }
 }
@@ -565,6 +772,7 @@ class _Legend extends StatelessWidget {
         item(const Color(0xFF6A1B9A), 'Ghế đôi'),
         item(const Color(0xFF00A8E8), 'Đang chọn'),
         item(Colors.grey.shade400, 'Đã bán'),
+        item(const Color.fromARGB(255, 255, 95, 77), 'Đang có người giữ'),
       ],
     );
   }

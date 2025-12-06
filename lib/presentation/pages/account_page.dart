@@ -14,6 +14,7 @@ import 'login_page.dart';
 import 'register_page.dart';
 import 'two_factor/two_factor_settings_page.dart';
 import '../pages/two_factor/backup_codes_page.dart';
+import 'customer_care_page.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -26,6 +27,12 @@ class AccountPage extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Tài khoản'),
             actions: [
+              // Customer Care button
+              IconButton(
+                icon: const Icon(Icons.support_agent),
+                onPressed: () => CustomerCareBottomSheet.show(context),
+                tooltip: 'Chăm sóc khách hàng',
+              ),
               if (state.isAuthenticated)
                 IconButton(
                   icon: const Icon(Icons.logout),
@@ -109,6 +116,29 @@ class _GuestView extends StatelessWidget {
               ),
             ),
             child: const Text('Tạo tài khoản'),
+          ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text(
+            'Cần hỗ trợ?',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => CustomerCareBottomSheet.show(context),
+            icon: Icon(Icons.support_agent, color: theme.primaryColor),
+            label: const Text('Liên hệ chăm sóc khách hàng'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              side: BorderSide(color: theme.primaryColor),
+            ),
           ),
         ],
       ),
@@ -345,6 +375,26 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
                     )
                     );
                   },
+                ),
+                const Divider(height: 32),
+                Text(
+                  'Hỗ trợ',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Icon(
+                    Icons.support_agent,
+                    color: theme.primaryColor,
+                  ),
+                  title: const Text('Chăm sóc khách hàng'),
+                  subtitle: const Text(
+                    'Liên hệ với chúng tôi để được hỗ trợ',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => CustomerCareBottomSheet.show(context),
                 ),
               ],
             ),

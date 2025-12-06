@@ -56,7 +56,7 @@ class OrderSummaryPage extends StatefulWidget {
     this.onPaymentFailed,
     this.tags = const <String>[],
     this.initialPaymentCode,
-    this.holdDuration = const Duration(minutes: 5),
+    this.holdDuration = const Duration(minutes: 10),
     this.onHoldExpired,
   });
 

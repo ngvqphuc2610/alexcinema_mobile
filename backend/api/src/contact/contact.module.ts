@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { ContactService } from './contact.service';
 import { ContactController } from './contact.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { MailModule } from '../mail/mail.module';
 import { RolesGuard } from '../common/guards/roles.guard';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, MailModule],
   controllers: [ContactController],
   providers: [ContactService, RolesGuard],
   exports: [ContactService],
 })
-export class ContactModule {}
+export class ContactModule { }
