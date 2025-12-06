@@ -33,7 +33,7 @@ export class SeatLocksService {
             );
         }
 
-        // Lock expires in 10 minutes
+        // Lock expires in 5 minutes (matching booking timeout)
         const expiresAt = new Date();
         expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 

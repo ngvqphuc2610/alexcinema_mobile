@@ -7,19 +7,14 @@ class SocketService {
   IO.Socket? _socket;
   String? _currentSessionId;
 
-  final void Function(int seatId, String sessionId)? onSeatLocked;
-  final void Function(int seatId)? onSeatUnlocked;
-  final void Function()? onConnected;
-  final void Function()? onDisconnected;
-  final void Function(String error)? onError;
+  // Mutable callbacks that can be set after initialization
+  void Function(int seatId, String sessionId)? onSeatLocked;
+  void Function(int seatId)? onSeatUnlocked;
+  void Function()? onConnected;
+  void Function()? onDisconnected;
+  void Function(String error)? onError;
 
-  SocketService({
-    this.onSeatLocked,
-    this.onSeatUnlocked,
-    this.onConnected,
-    this.onDisconnected,
-    this.onError,
-  });
+  SocketService(); // Empty constructor
 
   /// Connect to Socket.IO server
   void connect(String baseUrl) {
@@ -28,10 +23,16 @@ class SocketService {
       return;
     }
 
-    debugPrint('🔌 Connecting to Socket.IO: $baseUrl/seats');
+    // Remove /api suffix if present (Socket.IO namespace doesn't use it)
+    String socketUrl = baseUrl;
+    if (socketUrl.endsWith('/api')) {
+      socketUrl = socketUrl.substring(0, socketUrl.length - 4);
+    }
+
+    debugPrint('🔌 Connecting to Socket.IO: $socketUrl/seats');
 
     _socket = IO.io(
-      '$baseUrl/seats',
+      '$socketUrl/seats',
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()

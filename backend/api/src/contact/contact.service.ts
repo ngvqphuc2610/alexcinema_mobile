@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 
@@ -14,7 +15,12 @@ export interface ContactQueryParams {
 
 @Injectable()
 export class ContactService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ContactService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) { }
 
   async create(dto: CreateContactDto) {
     const data: Prisma.contactUncheckedCreateInput = {
@@ -26,7 +32,43 @@ export class ContactService {
       status: dto.status?.trim(),
       reply: dto.reply,
     };
-    return this.prisma.contact.create({ data });
+
+    // Save to database first
+    const contact = await this.prisma.contact.create({ data });
+
+    this.logger.log(`📝 Contact #${contact.id_contact} created from ${contact.email}`);
+
+    // Send emails asynchronously (don't block the response)
+    this.sendContactEmails(contact).catch((error) => {
+      this.logger.error(`Failed to send contact emails: ${error.message}`);
+    });
+
+    return contact;
+  }
+
+  private async sendContactEmails(contact: any) {
+    try {
+      // Send notification to admin
+      await this.mailService.sendContactNotificationEmail({
+        customerName: contact.name,
+        customerEmail: contact.email,
+        subject: contact.subject,
+        message: contact.message,
+        contactId: contact.id_contact,
+      });
+
+      // Send confirmation to customer
+      await this.mailService.sendContactConfirmationEmail({
+        to: contact.email,
+        name: contact.name,
+        subject: contact.subject,
+      });
+
+      this.logger.log(`✅ Contact emails sent successfully for contact #${contact.id_contact}`);
+    } catch (error) {
+      this.logger.error(`❌ Error sending contact emails: ${error.message}`);
+      throw error;
+    }
   }
 
   async findAll(params: ContactQueryParams = {}) {
@@ -36,18 +78,18 @@ export class ContactService {
     const where: Prisma.contactWhereInput =
       params.search && params.search.trim().length > 0
         ? {
-            OR: [
-              { name: { contains: params.search } },
-              { email: { contains: params.search } },
-              { subject: { contains: params.search } },
-            ],
-            status: params.status?.trim(),
-            id_staff: params.staffId ?? undefined,
-          }
+          OR: [
+            { name: { contains: params.search } },
+            { email: { contains: params.search } },
+            { subject: { contains: params.search } },
+          ],
+          status: params.status?.trim(),
+          id_staff: params.staffId ?? undefined,
+        }
         : {
-            status: params.status?.trim(),
-            id_staff: params.staffId ?? undefined,
-          };
+          status: params.status?.trim(),
+          id_staff: params.staffId ?? undefined,
+        };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.contact.findMany({
